@@ -29,7 +29,14 @@ AWS_SESSION_TOKEN = os.environ.get("AWS_SESSION_TOKEN", "")
 DEFAULT_FILE_STORAGE = "basechem.mni_common.storage_backends.MediaStorage"
 STATICFILES_STORAGE = "basechem.mni_common.storage_backends.StaticStorage"
 AWS_S3_REGION_NAME = os.environ.get("AWS_S3_REGION_NAME", "us-west-2")
-AWS_S3_CUSTOM_DOMAIN = "shore.nicotx.cloud"
+AWS_S3_CUSTOM_DOMAIN = os.environ.get(
+    "AWS_S3_CUSTOM_DOMAIN",
+    "%s.s3.%s.amazonaws.com"
+    % (
+        AWS_STORAGE_BUCKET_NAME,
+        AWS_S3_REGION_NAME,
+    ),
+)
 AWS_DEFAULT_ACL = os.environ.get("AWS_DEFAULT_ACL", "public-read")
 
 ##########################################################################################
@@ -47,9 +54,9 @@ if ENVIRONMENT in ["test", "prod"]:
         region_name=AWS_S3_REGION_NAME,
     )
     # AWS log group that contains the "analytics" and "django" log streams
-    log_group = "/nico/mni/mni-test/basechem"
+    log_group = "/basechem/mni/mni-test/basechem"
     if ENVIRONMENT == "prod":
-        log_group = "/nico/mni/mni-prod/basechem"
+        log_group = "/basechem/mni/mni-prod/basechem"
 
     # Configure django error logging
     LOGGING["formatters"]["aws_error_formatter"] = {
@@ -86,7 +93,7 @@ if ENVIRONMENT in ["test", "prod"]:
 ##########################################################################################
 
 EMAIL_HOST = os.environ.get("EMAIL_HOST", "mail.smtp2go.com")
-EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "nicotx")
+EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "")
 EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
 EMAIL_USE_TLS = os.environ.get("EMAIL_USE_TLS", True)
 EMAIL_USE_SSL = os.environ.get("EMAIL_USE_SSL", False)
@@ -100,9 +107,7 @@ else:
     default_smtp_port = 25
 EMAIL_PORT = os.environ.get("EMAIL_PORT", default_smtp_port)
 EMAIL_SUBJECT_PREFIX = "[Basechem %s] " % ENVIRONMENT.title()
-DEFAULT_FROM_EMAIL = os.environ.get(
-    "DEFAULT_FROM_EMAIL", "nico-admin@nicotherapeutics.com"
-)
+DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "")
 SERVER_EMAIL = DEFAULT_FROM_EMAIL
 
 ##########################################################################################
