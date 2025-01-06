@@ -23,12 +23,12 @@ ADMIN_FAILURE = "Admin Failure"
 ADMIN_NOTIFICATION = "Admin Notification"
 
 # IB Model Names
-IB_LOGD = "denali_logd"
-IB_HLM = "denali_hlm"
-IB_RLM = "denali_rlm"
-IB_PERM = "denali_perm_mdck_mdr1"
-IB_EFFLUX = "denali_efflux_mdck_mdr1"
-IB_KSOL = "denali_kinetic_solubility"
+IB_LOGD = "generic_logd"
+IB_HLM = "generic_hlm"
+IB_RLM = "generic_rlm"
+IB_PERM = "generic_perm_mdck_mdr1"
+IB_EFFLUX = "generic_efflux_mdck_mdr1"
+IB_KSOL = "generic_kinetic_solubility"
 IB_APKA = "generic_apka"
 IB_BPKA = "generic_bpka"
 
