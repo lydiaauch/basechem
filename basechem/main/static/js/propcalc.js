@@ -69,18 +69,41 @@ function collectSuccessfulPropCalcTask(coPk, ajaxData, _parsedData, _viewer) {
   oldGridItem.remove()
   $('.hover-tooltip').tooltip({trigger:"hover"})
   // Update tooltip text with the latest training date (if inductive props exist)
-  if(ajaxData.taskResult["latest_lm_data_date"]){
+  if(ajaxData.taskResult["latest_rlm_data_date"]){
     const hlmTooltipElement = document.getElementById("hlm-tooltip")
     if(hlmTooltipElement){
-      const hlmTooltip = hlmTooltipElement.getAttribute("data-original-title").replace("?",ajaxData.taskResult.latest_lm_data_date)
+      const hlmTooltip = hlmTooltipElement.getAttribute("data-original-title").replace("?",ajaxData.taskResult.latest_rlm_data_date)
       hlmTooltipElement.setAttribute("data-original-title", hlmTooltip)
-    }
+  }
+  }
+  if(ajaxData.taskResult["latest_hlm_data_date"]){
     const rlmTooltipElement = document.getElementById("rlm-tooltip")
     if(rlmTooltipElement){
-      const rlmTooltip = rlmTooltipElement.getAttribute("data-original-title").replace("?",ajaxData.taskResult.latest_lm_data_date)
+      const rlmTooltip = rlmTooltipElement.getAttribute("data-original-title").replace("?",ajaxData.taskResult.latest_hlm_data_date)
       rlmTooltipElement.setAttribute("data-original-title", rlmTooltip)
-    }  
+    }
   }
+  if(ajaxData.taskResult["latest_efflux_data_date"]){
+    const effluxTooltipElement = document.getElementById("efflux-tooltip");
+    if (effluxTooltipElement) {
+      const effluxTooltip = effluxTooltipElement.getAttribute("data-original-title").replace("?", ajaxData.taskResult.latest_efflux_data_date);
+      effluxTooltipElement.setAttribute("data-original-title", effluxTooltip);
+    }
+  }
+  if(ajaxData.taskResult["latest_permeability_data_date"]){
+    const permTooltipElement = document.getElementById("perm-tooltip");
+    if (permTooltipElement) {
+      const permTooltip = permTooltipElement.getAttribute("data-original-title").replace("?", ajaxData.taskResult.latest_permeability_data_date);
+      permTooltipElement.setAttribute("data-original-title", permTooltip);
+    }
+  }
+  if(ajaxData.taskResult["latest_kinetic_solubility_data_date"]){
+    const ksolTooltipElement = document.getElementById("ksol-tooltip");
+    if (ksolTooltipElement) {
+      const ksolTooltip = ksolTooltipElement.getAttribute("data-original-title").replace("?", ajaxData.taskResult.latest_kinetic_solubility_data_date);
+      ksolTooltipElement.setAttribute("data-original-title", ksolTooltip);
+    }
+  }  
   if(ajaxData.taskResult["latest_logd_data_date"]){
     const logdTooltipElement = document.getElementById("logd-tooltip")
     if(logdTooltipElement){

@@ -357,6 +357,10 @@ class AjaxCollectTaskTestCase(BasechemViewTestMixin, BasechemTestCase):
             "logd_prediction",
             "logd_measured",
             "latest_logd_data_date",
+            "hlm_prediction",
+            "hlm_probability",
+            "efflux_prediction",
+            "efflux_probability",
             "mw",
             "clogp",
         ]

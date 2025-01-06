@@ -53,8 +53,9 @@ def process_new_data(project, assay_data_df, analyses):
             )
             try:
                 assayed_dns = assay_data_df["DN_ID"].unique().tolist()
-                assay_data_col.find_mmps()
-                assay_data_col.update_mmp_dtx_avg_assay_data(assayed_dns)
+                # TODO: Fix MMPs for NICO but for now there is no DB so don't run this
+                # assay_data_col.find_mmps()
+                # assay_data_col.update_mmp_dtx_avg_assay_data(assayed_dns)
             except:
                 # Don't let an MMP error stop the email from being sent
                 pass

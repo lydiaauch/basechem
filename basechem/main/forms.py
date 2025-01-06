@@ -355,16 +355,7 @@ class PropCalcForm(CompoundIntakeForm):
         (TPSA, "TPSA: Topological polar surface area"),
         (CLOGP, "Calculated LogP: LogP is measured at pH where molecule is neutral"),
     ]
-    initial_physiochemical = [MW, TPSA, HLM]
-    if settings.INDUCTIVE_BIO_ENABLED:
-        PHYSIOCHEMICAL_PROPERTIES.extend(
-            [
-                (ALOGD, "LogD: Predicted LodD using the InductiveBio ML model"),
-                (RLM, "RLM: Predicted RLM stability using the InductiveBio ML model"),
-                (HLM, "HLM: Predicted HLM stability using the InductiveBio ML model"),
-            ]
-        )
-        initial_physiochemical.append(ALOGD)
+    initial_physiochemical = [MW, TPSA]
 
     counts = forms.MultipleChoiceField(
         required=False, widget=forms.CheckboxSelectMultiple, choices=COUNTS_PROPERTIES
@@ -376,6 +367,27 @@ class PropCalcForm(CompoundIntakeForm):
         choices=PHYSIOCHEMICAL_PROPERTIES,
         initial=initial_physiochemical,
     )
+
+    if settings.INDUCTIVE_BIO_ENABLED:
+        INDUCTIVE_BIO_PROPERTIES = [
+            (ALOGD, "LogD: Predicted aLodD"),
+            (RLM, "RLM: Predicted RLM stability"),
+            (HLM, "HLM: Predicted HLM stability"),
+            (PERMEABILITY, "Permeability: Predicted MDCK-MDR1 permeability"),
+            (EFFLUX, "Efflux: Predicted MDCK-MDR1 efflux"),
+            (KSOL, "Kinetic Solubility: Predicted kinetic solubility"),
+            (APKA, "Acidic pKa: Predicted most acidic pKa"),
+            (BPKA, "Basic pKa: Predicted most basic pKa"),
+        ]
+
+        initial_predicted = [ALOGD, HLM, EFFLUX]
+
+        predicted = forms.MultipleChoiceField(
+            required=False,
+            widget=forms.CheckboxSelectMultiple,
+            choices=INDUCTIVE_BIO_PROPERTIES,
+            initial=initial_predicted,
+        )
 
 
 ######################

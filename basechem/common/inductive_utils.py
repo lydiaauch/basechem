@@ -3,22 +3,22 @@ from django.conf import settings
 from django.core.mail import mail_admins
 from rdkit import Chem
 
-from basechem.common.constants import ADMIN_FAILURE
+from basechem.common.constants import ADMIN_FAILURE, ALL_IB_MODELS
 
-##################
-#   LM METHODS   #
-##################
+###########################
+### Request Predictions ###
+###########################
 
 
-def run_inductive_lm_predict(
-    input_file, species, image=True, version=settings.INDUCTIVE_VERSION
+def get_ib_predictions(
+    input_file, models, images=True, version=settings.INDUCTIVE_VERSION
 ):
     """
-    Send the given sdf file to the InductiveBio predict endpoint
-    to retrieve LM stability predictions for Human or Rat
+    Send the given SDF file to the InductiveBio predict endpoint to generate predictions
+    from the given models
     :param input_file: sdf file containing compounds of which to predict LM stability
-    :param species: H or R for which model to predict (human or rat)
-    :param image: boolean for if images should be requested from the API
+    :param models: list of models to predict values from
+    :param images: boolean for if images should be requested from the API
     :param version: either "latest" or "dev"
     :return: returns a list of dicts of the form
         {
@@ -33,11 +33,20 @@ def run_inductive_lm_predict(
         "probs_list": list,
     }
     """
-    url = "https://api.inductive.bio/0.1/properties/predict"
+    url = "https://api.inductive.bio/0.1/properties/predict_multi_model"
     headers = {
         "X-API-KEY": settings.INDUCTIVE_API_KEY,
         "X-CUSTOMER-ID": settings.INDUCTIVE_CUSTOMER_ID,
     }
+
+    if any(model not in ALL_IB_MODELS for model in models):
+        admin_email_message = (
+            f"One of {models} is not recognized by the InductiveBio API"
+        )
+        mail_admins(ADMIN_FAILURE, admin_email_message)
+        return {}
+
+    models_arr = [{"model_id": model, "model_version": version} for model in models]
 
     with open(input_file) as f:
         sdf_text = f.read()
@@ -46,38 +55,50 @@ def run_inductive_lm_predict(
         ids = [m.GetProp("_Name") for m in suppl]
 
         body = {
-            "model_id": f"denali_{species.lower()}lm",
-            "model_version": version,
+            "model_requests": models_arr,
             "input_type": "SDF",
             "input": sdf_text,
             "molecule_ids": ids,
-            "include_interpretations": image,
+            "include_interpretations": images,
         }
 
         response = requests.post(url, json=body, headers=headers)
         response_dict = response.json()
+
         if not isinstance(response_dict, dict):
             response_dict = {}
 
-        predictions = _parse_inductive_lm_response(response_dict)
+        predictions = {}
+        for response in response_dict.get("data", []):
+            predictions[response.get("model_id")] = _parse_inductive_response(response)
         return predictions
 
 
-def _parse_inductive_lm_response(response_dict):
+def _parse_inductive_response(response_dict):
     """
     Parse the InductiveBio predict response into Basechem preferred format
     :param response_dict: json response from Inductive predict
-    :return: parsed response dict
+    :return: parsed response dict of the form
+        {
+        "name": "",
+        "model_version": "",
+        "prediction": "InductiveBio API Error - LMs",
+        "measured": "",
+        "out_of_domain": "",
+        "latest_data_date": "",
+        "interp_image": "",
+        "probs_image": "",
+        "probs_list": [],
+    }
     """
     response_preds = response_dict.get("predictions", {})
     if not response_preds:
-        admin_email_message = f"InductiveBio API failed to generate LM predictions with a response of: \n {response_dict}"
+        admin_email_message = f"InductiveBio API failed to generate predictions for {response_dict.get('molecule_id')} with a response of: \n {response_dict}"
         mail_admins(ADMIN_FAILURE, admin_email_message)
-
         return [
             {
                 "name": "",
-                "prediction": "InductiveBio API Error - LMs",
+                "prediction": "InductiveBio API Error",
                 "measured": "",
                 "out_of_domain": "",
                 "latest_data_date": "",
@@ -92,10 +113,10 @@ def _parse_inductive_lm_response(response_dict):
     for cpd_data in response_preds:
         cpd_pred = {}
         cpd_pred["name"] = cpd_data["molecule_id"]
-        cpd_pred["prediction"] = str(round(cpd_data["continuous_prediction"]))
+        cpd_pred["prediction"] = str(round(cpd_data["continuous_prediction"], 2))
         measured = cpd_data.get("measured_value", {}).get("continuous_value", "")
         if measured != "":
-            measured = str(round(measured))
+            measured = str(round(measured, 2))
         cpd_pred["measured"] = measured
         cpd_pred["out_of_domain"] = str(cpd_data["out_of_domain_flag"])
 
@@ -109,97 +130,17 @@ def _parse_inductive_lm_response(response_dict):
         cpd_pred["probs_image"] = probs_image
         cpd_pred["probs_list"] = cpd_data.get("predicted_probabilities", [])
 
-        cpd_pred["latest_data_date"] = response_dict.get("latest_data_date")
-        cpd_pred["model_version"] = response_dict.get("model_version")
+        cpd_pred["latest_data_date"] = response_dict.get("latest_data_date", "")
+        cpd_pred["model_version"] = response_dict.get("model_version", "")
 
         predictions.append(cpd_pred)
 
     return predictions
 
 
-##################
-#  LOGD METHODS  #
-##################
-
-
-def run_inductive_alogd_predict(input_file, version=settings.INDUCTIVE_VERSION):
-    """
-    Send the given sdf file to the InductiveBio predict endpoint to retrieve LogD predictions
-    :param input_file: sdf file containing compounds of which to predict LogD
-    :param version: either "latest" or "dev"
-    :return: returns a list of dicts of the form
-    {
-        "name": str,
-        "prediction": str(number),
-        "latest_data_date": "YYYY-MM-DD",
-        "model_version": str,
-    }
-    """
-    url = "https://api.inductive.bio/0.1/properties/predict"
-    headers = {
-        "X-API-KEY": settings.INDUCTIVE_API_KEY,
-        "X-CUSTOMER-ID": settings.INDUCTIVE_CUSTOMER_ID,
-    }
-
-    with open(input_file) as f:
-        sdf_text = f.read()
-
-        suppl = Chem.SDMolSupplier(input_file)
-        ids = [m.GetProp("_Name") for m in suppl]
-
-        body = {
-            "model_id": "denali_logd",
-            "model_version": version,
-            "input_type": "SDF",
-            "input": sdf_text,
-            "molecule_ids": ids,
-        }
-
-        response = requests.post(url, json=body, headers=headers)
-        response_dict = response.json()
-        if not isinstance(response_dict, dict):
-            response_dict = {}
-
-        predictions = _parse_inductive_logd_response(response_dict)
-        return predictions
-
-
-def _parse_inductive_logd_response(response_dict):
-    """
-    Parse the InductiveBio LogD predict response into Basechem preferred format
-    :param response_dict: json response from Inductive predict
-    :return: parsed response dict
-    """
-    response_preds = response_dict.get("predictions", {})
-    if not response_preds:
-        admin_email_message = f"InductiveBio API failed to generate aLodD predictions with a response of: \n {response_dict}"
-        mail_admins(ADMIN_FAILURE, admin_email_message)
-
-        return [
-            {
-                "name": "",
-                "prediction": "InductiveBio API Error - LogD",
-                "model_version": "",
-                "latest_data_date": "",
-            }
-        ]
-
-    predictions = []
-    for cpd_data in response_preds:
-        cpd_pred = {}
-        cpd_pred["name"] = cpd_data["molecule_id"]
-        cpd_pred["prediction"] = str(round(cpd_data["continuous_prediction"], 2))
-        cpd_pred["model_version"] = response_dict.get("model_version")
-        cpd_pred["latest_data_date"] = response_dict.get("latest_data_date")
-
-        measured = cpd_data.get("measured_value", {}).get("continuous_value", "")
-        if measured:
-            measured = str(round(measured, 2))
-        cpd_pred["measured"] = measured
-
-    predictions.append(cpd_pred)
-
-    return predictions
+#######################
+### POST Data to IB ###
+#######################
 
 
 def update_inductive_logd_data(new_data_filepath):
@@ -207,7 +148,7 @@ def update_inductive_logd_data(new_data_filepath):
     PUT given file with logD data to Inductive endpoint
     :param new_data_filepath: path to file containing new data
     """
-    url = "https://api.inductive.bio/0.1/data/sdf_upload"
+    url = "https://api.inductive.bio/data/sdf_upload"
     headers = {
         "X-API-KEY": settings.INDUCTIVE_API_KEY,
         "X-CUSTOMER-ID": settings.INDUCTIVE_CUSTOMER_ID,

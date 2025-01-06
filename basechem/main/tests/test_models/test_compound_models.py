@@ -7,6 +7,15 @@ from django.core import mail
 from django.test import tag
 from rdkit import Chem
 
+from basechem.common.constants import (
+    ALL_IB_MODELS,
+    IB_EFFLUX,
+    IB_HLM,
+    IB_KSOL,
+    IB_LOGD,
+    IB_PERM,
+    IB_RLM,
+)
 from basechem.common.mocks.mock_mayachem_utils import (
     mock_has_job_completed,
     mock_process_torsion_job_result_fail_psi4,
@@ -15,7 +24,7 @@ from basechem.common.mocks.mock_mayachem_utils import (
     mock_submit_torsion_job_to_slurm_USE_CACHE,
 )
 from basechem.common.tests.base import BasechemTestCase
-from basechem.main.constants import MMP
+from basechem.main.constants import ALOGD, MMP
 from basechem.main.models.compound_models import (
     Compound,
     compound_files_path,
@@ -152,6 +161,14 @@ class CompoundTestCase(BasechemTestCase):
                 self.assertTrue(mol.GetProp("hlm_prediction"))
                 self.assertTrue(mol.GetProp("hlm_probabilities"))
 
+            with self.subTest("Test model names are correct"):
+                self.assertTrue(mol.GetProp("efflux_prediction"))
+                self.assertTrue(mol.GetProp("efflux_ood"))
+                self.assertTrue(mol.GetProp("permeability_prediction"))
+                self.assertTrue(mol.GetProp("permeability_ood"))
+                self.assertTrue(mol.GetProp("kinetic_solubility_prediction"))
+                self.assertTrue(mol.GetProp("kinetic_solubility_ood"))
+
     def test_get_sdf_file(self):
         """
         Tests an sdf file is created with mol information
@@ -240,23 +257,20 @@ class CompoundTestCase(BasechemTestCase):
         self.assertIn("width='150px'", svg)
 
     @tag("inductive")
-    def test_predict_logd(self):
+    def test_get_ib_predictions(self):
         """
-        Tests aLogD is calculated with the InductiveBio model
+        Tests predicted values are returned with the InductiveBio model
         """
-        ib_data = self.compound_a.predict_logd()
-        self.assertTrue(type(ib_data) is dict)
-        self.assertEqual(ib_data["ilogd"], "2.30")
-        self.assertEqual(ib_data["measured"], "2.22")
+        with self.subTest("test aLogD is calculated with the IB model"):
+            ib_data = self.compound_a.get_ib_predictions([IB_LOGD], images=False)
+            self.assertTrue(type(ib_data) is dict)
+            logd_pred = ib_data[IB_LOGD][0]
+            self.assertEqual(logd_pred["prediction"], "2.30")
+            self.assertEqual(logd_pred["measured"], "2.22")
 
-    @tag("inductive")
-    def test_predict_lms(self):
-        """
-        Tests result from InductiveBio API is returned
-        """
-        with self.subTest("Test species as Rat"):
+        with self.subTest("Test RLM Model"):
             expected_dict = {
-                "prediction": "54",
+                "prediction": "54.04",
                 "name": self.compound_a.name,
                 "measured": "",
                 "out_of_domain": "True",
@@ -266,11 +280,13 @@ class CompoundTestCase(BasechemTestCase):
                 "probs_image": "",
                 "probs_list": [0.049, 0.051, 0.9],
             }
-            result_dict = self.compound_a.predict_lms("R", image=False)
-            self.assertEqual(result_dict, expected_dict)
-        with self.subTest("Test species as Human"):
+            ib_data = self.compound_a.get_ib_predictions([IB_RLM], images=False)
+            rlm_dict = ib_data[IB_RLM][0]
+            self.assertEqual(rlm_dict, expected_dict)
+
+        with self.subTest("Test HLM Model"):
             expected_dict = {
-                "prediction": "20",
+                "prediction": "20.53",
                 "name": self.compound_a.name,
                 "measured": "",
                 "out_of_domain": "True",
@@ -280,8 +296,40 @@ class CompoundTestCase(BasechemTestCase):
                 "probs_image": "",
                 "probs_list": [0.2, 0.4, 0.4],
             }
-            result_dict = self.compound_a.predict_lms("H", image=False)
-            self.assertEqual(result_dict, expected_dict)
+            ib_result = self.compound_a.get_ib_predictions([IB_HLM], images=False)
+            self.assertEqual(ib_result[IB_HLM][0], expected_dict)
+
+        with self.subTest("Test KSOL Model"):
+            expected_dict = {
+                "name": self.compound_a.name,
+                "prediction": "6.5",
+                "measured": "",
+                "out_of_domain": "True",
+                "latest_data_date": "2024-10-29",
+                "model_version": "1.0.0",
+                "interp_image": "",
+                "probs_image": "",
+                "probs_list": [0.586, 0.311, 0.101],
+            }
+            ib_result = self.compound_a.get_ib_predictions([IB_KSOL], images=False)
+            self.assertEqual(ib_result[IB_KSOL][0], expected_dict)
+
+        with self.subTest("Test multiple models"):
+            models = [IB_KSOL, IB_EFFLUX, IB_PERM]
+            result_dict = self.compound_a.get_ib_predictions(models, images=False)
+            self.assertEqual(len(result_dict), len(models))
+            for model in models:
+                self.assertIn(model, result_dict.keys())
+                self.assertEqual(type(result_dict[model]), list)
+                self.assertEqual(type(result_dict[model][0]), dict)
+
+        with self.subTest("Test no models given"):
+            result_dict = self.compound_a.get_ib_predictions(images=False)
+            self.assertEqual(len(result_dict), len(ALL_IB_MODELS))
+            for model in models:
+                self.assertIn(model, result_dict.keys())
+                self.assertEqual(type(result_dict[model]), list)
+                self.assertEqual(type(result_dict[model][0]), dict)
 
     def test_get_ligprep_path(self):
         """

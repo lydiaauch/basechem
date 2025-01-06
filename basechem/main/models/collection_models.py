@@ -33,14 +33,15 @@ from basechem.common.rdkit_utils import RDKitWrappers
 from basechem.main.constants import (
     ALIGN,
     ALOGD,
+    APKA,
     AUTO,
+    BPKA,
     DOCK,
     DTX_MMP,
     ESP,
-    HLM,
+    IB_PROPS,
     MMP,
     PROPCALC,
-    RLM,
     TORSION,
 )
 from basechem.main.models.compound_models import Compound, CompoundOccurrence, Series
@@ -600,15 +601,13 @@ class Collection(models.Model):
         """
         props = copy.deepcopy(self.metadata.get("props_to_show", []))
         # Some properties require multiple columns to display the data, adjust columns accordingly
-        if ALOGD in props:
-            props.append(f"{ALOGD} Prediction")
-            props.remove(ALOGD)
-        if RLM in props:
-            props.extend([f"{RLM} Prediction", f"{RLM} Probabilities"])
-            props.remove(RLM)
-        if HLM in props:
-            props.extend([f"{HLM} Prediction", f"{HLM} Probabilities"])
-            props.remove(HLM)
+        for prop in IB_PROPS:
+            if prop in props and prop != ALOGD and prop != APKA and prop != BPKA:
+                props.extend([f"{prop} Prediction", f"{prop} Probabilities"])
+                props.remove(prop)
+            elif prop in props and any([prop == ALOGD, prop == APKA, prop == BPKA]):
+                props.append(f"{prop} Prediction")
+                props.remove(prop)
         return props
 
     def inductive_in_props(self):
@@ -617,7 +616,7 @@ class Collection(models.Model):
         :returns: a boolean, do this collection's properties require InductiveBio
         """
         props = self.metadata.get("props_to_show", [])
-        inductive = any([HLM in props, RLM in props, ALOGD in props])
+        inductive = any(prop in props for prop in IB_PROPS)
         return inductive and settings.INDUCTIVE_BIO_ENABLED
 
     def propcalc_analysis(self):
@@ -661,10 +660,11 @@ class Collection(models.Model):
                 inductive = self.inductive_in_props()
                 mol = c.mol_w_properties(inductive=inductive, hydrogens=True)
             # Remove image paths from sdf download
-            mol.ClearProp("rlm_probabilities")
-            mol.ClearProp("hlm_probabilities")
-            mol.ClearProp("rlm_interpretation")
-            mol.ClearProp("hlm_interpretation")
+            for prop in mol.GetPropNames():
+                if "probabilities" in prop:
+                    mol.ClearProp(prop)
+                if "interpretation" in prop:
+                    mol.ClearProp(prop)
 
             writer.write(mol)
         writer.close()

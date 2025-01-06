@@ -8,6 +8,8 @@
       {% with value=property_results|dict_get:co.pk|get_propcalc_val:prop %}
         {% if "LogD" in prop %}
           <td><p class="{{ value|pred_type }} {{ value|first|color_filter:prop }}">{{ value|first }}</p></td>
+        {% elif "pKa" in prop %}
+          <td><p class="{{ value|pred_type }}">{{ value|first }}</p></td>
         {% elif "TPSA" in prop %}
           <td><p class="{{ value|color_filter:prop }}">{{ value }}</p></td>
         {% elif "Prediction" in prop %}
