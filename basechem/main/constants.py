@@ -48,6 +48,12 @@ CLOGP = "cLogP"
 ALOGD = "LogD"
 RLM = "RLM"
 HLM = "HLM"
+EFFLUX = "Efflux"
+PERMEABILITY = "Permeability"
+KSOL = "Kinetic Solubility"
+APKA = "Most Acidic pKa"
+BPKA = "Most Basic pKa"
+IB_PROPS = [ALOGD, RLM, HLM, EFFLUX, PERMEABILITY, KSOL, APKA, BPKA]
 
 ALL_PROPS = [
     ACCEPTORS,
@@ -65,6 +71,11 @@ ALL_PROPS = [
     ALOGD,
     RLM,
     HLM,
+    EFFLUX,
+    PERMEABILITY,
+    KSOL,
+    APKA,
+    BPKA,
 ]
 
 # Max hours to wait for sending an assay email

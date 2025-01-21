@@ -18,6 +18,12 @@
                 <span id="hlm-tooltip" class="hover-tooltip icon question-mark bg-orange" data-toggle="tooltip" data-placement="bottom" data-html=true title="A border around the number indicates a measured value. This model is built with data through ?. Values are colored using this scale: <br> <img src='{% static 'images/propcalc/hlm-color-legend.svg' %}' width=200px />"></span>
               {% elif "RLM Prediction" == prop %}
                 <span id="rlm-tooltip" class="hover-tooltip icon question-mark bg-orange" data-toggle="tooltip" data-placement="bottom" data-html=true title="A border around the number indicates a measured value. This model is built with data through ?. Values are colored using this scale: <br> <img src='{% static 'images/propcalc/rlm-color-legend.svg' %}' width=200px />"></span>
+              {% elif "Efflux Prediction" == prop %}
+                <span id="efflux-tooltip" class="hover-tooltip icon question-mark bg-orange" data-toggle="tooltip" data-placement="bottom" data-html=true title="A border around the number indicates a measured value. This model is built with data through ?."></span>
+              {% elif "Permeability Prediction" == prop %}
+                <span id="perm-tooltip" class="hover-tooltip icon question-mark bg-orange" data-toggle="tooltip" data-placement="bottom" data-html=true title="A border around the number indicates a measured value. This model is built with data through ?."></span>
+              {% elif "Kinetic Solubility Prediction" == prop %}
+                <span id="ksol-tooltip" class="hover-tooltip icon question-mark bg-orange" data-toggle="tooltip" data-placement="bottom" data-html=true title="A border around the number indicates a measured value. This model is built with data through ?."></span>
               {% endif %}
             </div>
         {% endfor %}

@@ -159,6 +159,33 @@ def color_filter(value, prop):
         else:
             return "green"
 
+    if prop == "Efflux Prediction":
+        value = float(value)
+        if value > 20:
+            return "red"
+        elif 5 < value <= 20:
+            return "orange"
+        else:
+            return "green"
+
+    if prop == "Permeability Prediction":
+        value = float(value)
+        if 0 < value < 2:
+            return "red"
+        elif 2 <= value < 10:
+            return "orange"
+        else:
+            return "green"
+
+    if prop == "Kinetic Solubility Prediction":
+        value = float(value)
+        if 0 < value < 10:
+            return "red"
+        elif 10 <= value <= 100:
+            return "orange"
+        else:
+            return "green"
+
     if prop == "assay_result" and value:
         value = float(value)
         if value <= 1:
@@ -192,20 +219,19 @@ def get_propcalc_val(prop_dict, prop):
     prop = prop.lower().replace(" ", "_")
     value = prop_dict.get(prop, "")
 
+    prefix = prop.split("_")[:-1]
+    if prefix:
+        prefix = prefix[0]
+    if prefix == "kinetic":
+        prefix = "kinetic_solubility"
+
     if "probabilities" in prop:
-        prefix = re.match("(r|h)lm", prop).group(0)
         # Add the out of domain flag to the value
         ood_flag = eval(prop_dict.get(f"{prefix}_ood"))
         value = [value, ood_flag]
 
     if "prediction" in prop:
-        prefix = prop
         interp_img = None
-
-        match = re.match("(r|h)lm", prop)
-        if match:
-            prefix = re.match("(r|h)lm", prop).group(0)
-
         # Show measured value as 'value' if exists
         measured = prop_dict.get(f"{prefix}_measured")
         is_measured = False

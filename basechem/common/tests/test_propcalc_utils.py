@@ -82,13 +82,13 @@ class PropCalcUtilsTestCase(BasechemTestCase):
         )
         self.assertEqual(
             lines[1],
-            f"DN001,Inductive Bio GCNN,,,,out-of-domain,,0.200,,,{date},2.0.0: 2022-11-25,20,,54,\n",
+            f"DN001,Inductive Bio GCNN,,,,out-of-domain,,0.200,,,{date},2.0.0: 2022-11-25,20.53,,54.04,\n",
         )
         self.assertEqual(
             lines[2],
-            f"DN002,Inductive Bio GCNN,,,,out-of-domain,,0.200,,,{date},2.0.0: 2022-11-25,20,,54,\n",
+            f"DN002,Inductive Bio GCNN,,,,out-of-domain,,0.200,,,{date},2.0.0: 2022-11-25,20.53,,54.04,\n",
         )
         self.assertEqual(
             lines[3],
-            f"DN003,Inductive Bio GCNN,,,,out-of-domain,,0.200,,,{date},2.0.0: 2022-11-25,20,,54,\n",
+            f"DN003,Inductive Bio GCNN,,,,out-of-domain,,0.200,,,{date},2.0.0: 2022-11-25,20.53,,54.04,\n",
         )

@@ -35,3 +35,5 @@ log/
 */.env.dev
 */basechem/main/tests/testdata/tmp
 basechem/common/mmpdb_data/cache.fragdb
+basechem/common/ESP_DNN/core*
+basechem/common/ESP_DNN/qemu*

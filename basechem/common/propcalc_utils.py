@@ -4,8 +4,20 @@ import pandas as pd
 from django.conf import settings
 from django_q.tasks import fetch_group
 
-from basechem.common.inductive_utils import run_inductive_lm_predict
-from basechem.main.constants import ALL_PROPS, ALOGD, HLM, RLM, ROTATABLEBONDS
+from basechem.common.constants import IB_HLM, IB_RLM
+from basechem.common.inductive_utils import get_ib_predictions
+from basechem.main.constants import (
+    ALL_PROPS,
+    ALOGD,
+    APKA,
+    BPKA,
+    EFFLUX,
+    HLM,
+    KSOL,
+    PERMEABILITY,
+    RLM,
+    ROTATABLEBONDS,
+)
 
 
 def get_dtx_prop_name(prop):
@@ -31,10 +43,9 @@ def generate_dtx_lm_stability_csv(collection, lm_filepath):
     :param lm_filepath: path to the csv file to populate
     """
     sdf_filepath, _ = collection.get_sdf_file()
-    rlm_output = run_inductive_lm_predict(sdf_filepath, "R", False)
-    hlm_output = run_inductive_lm_predict(sdf_filepath, "H", False)
-    rlm_df = pd.DataFrame.from_dict(rlm_output)
-    hlm_df = pd.DataFrame.from_dict(hlm_output)
+    ib_output = get_ib_predictions(sdf_filepath, [IB_RLM, IB_HLM], False)
+    rlm_df = pd.DataFrame.from_dict(ib_output[IB_RLM])
+    hlm_df = pd.DataFrame.from_dict(ib_output[IB_HLM])
 
     # model_version and latest_data_date will be the same for all entries so can just take the first
     model_version = list(set(hlm_df["model_version"]))[0]
@@ -85,8 +96,10 @@ def generate_dtx_propcalc_csv(collection, props_filepath):
     """
     props = ["dn_id"]
     props.extend(ALL_PROPS)
-    props.remove(RLM)
-    props.remove(HLM)
+    props = [
+        x for x in props if x not in [HLM, RLM, EFFLUX, PERMEABILITY, KSOL, APKA, BPKA]
+    ]
+
     if not settings.INDUCTIVE_BIO_ENABLED:
         props.remove(ALOGD)
     collection.metadata["props_to_show"] = props

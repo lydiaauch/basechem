@@ -11,10 +11,10 @@ DOMAIN = os.environ.get("DOMAIN", "*")
 WEBSERVER_ROOT = os.environ.get("WEBSERVER_ROOT", "/home/app/web/")
 
 if ENVIRONMENT == "prod":
-    Q_CLUSTER["workers"] = 8  # default queue
+    Q_CLUSTER["workers"] = 16  # default queue
     Q_CLUSTER["ALT_CLUSTERS"]["fast"][
         "workers"
-    ] = 8  # propcalc and new_collection only rn
+    ] = 16  # propcalc and new_collection only rn
     Q_CLUSTER["ALT_CLUSTERS"]["slow"]["workers"] = 4  # torsion only rn
     INDUCTIVE_VERSION = "latest"
 
@@ -29,11 +29,15 @@ AWS_SESSION_TOKEN = os.environ.get("AWS_SESSION_TOKEN", "")
 DEFAULT_FILE_STORAGE = "basechem.mni_common.storage_backends.MediaStorage"
 STATICFILES_STORAGE = "basechem.mni_common.storage_backends.StaticStorage"
 AWS_S3_REGION_NAME = os.environ.get("AWS_S3_REGION_NAME", "us-west-2")
-AWS_S3_CUSTOM_DOMAIN = "%s.s3.%s.amazonaws.com" % (
-    AWS_STORAGE_BUCKET_NAME,
-    AWS_S3_REGION_NAME,
+AWS_S3_CUSTOM_DOMAIN = os.environ.get(
+    "AWS_S3_CUSTOM_DOMAIN",
+    "%s.s3.%s.amazonaws.com"
+    % (
+        AWS_STORAGE_BUCKET_NAME,
+        AWS_S3_REGION_NAME,
+    ),
 )
-AWS_DEFAULT_ACL = "public-read"
+AWS_DEFAULT_ACL = os.environ.get("AWS_DEFAULT_ACL", "public-read")
 
 ##########################################################################################
 #                                    Logger Settings                                     #
@@ -50,9 +54,9 @@ if ENVIRONMENT in ["test", "prod"]:
         region_name=AWS_S3_REGION_NAME,
     )
     # AWS log group that contains the "analytics" and "django" log streams
-    log_group = "/basechem/mni-test/basechem"
+    log_group = "/basechem/mni/mni-test/basechem"
     if ENVIRONMENT == "prod":
-        log_group = "/basechem/mni-prod/basechem"
+        log_group = "/basechem/mni/mni-prod/basechem"
 
     # Configure django error logging
     LOGGING["formatters"]["aws_error_formatter"] = {

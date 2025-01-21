@@ -34,13 +34,16 @@ from basechem.common.analysis_utils import (
     run_mc_torsion_scan,
     run_rdock,
 )
-from basechem.common.constants import ADMIN_NOTIFICATION
+from basechem.common.constants import (
+    ADMIN_NOTIFICATION,
+    ALL_IB_MODELS,
+    IB_HLM,
+    IB_LOGD,
+    IB_RLM,
+)
 from basechem.common.dtx_utils import get_agg_ic50_data, get_registered_structures
 from basechem.common.file_utils import get_tmp_file
-from basechem.common.inductive_utils import (
-    run_inductive_alogd_predict,
-    run_inductive_lm_predict,
-)
+from basechem.common.inductive_utils import get_ib_predictions
 from basechem.common.rdkit_utils import RDKitWrappers
 from basechem.main.constants import *
 from basechem.main.db_utils import MolField
@@ -799,51 +802,40 @@ class Compound(models.Model):
     ## PROPCALC METHODS ##
     ######################
 
-    def predict_logd(self):
+    def get_ib_predictions(self, models=None, images=True):
         """
-        Runs the InductiveBio logD model for this compound
-        :return: {"ilogd": str, "measured": str, "latest_data_date": str}
+        Runs InductiveBio predictions for models in the given list
+        :param models: list of models to generate predictions for
+        :return: dictionary of predictions where the model name is the key
         """
+        # If no models provided, run all available
+        if not models:
+            models = ALL_IB_MODELS
         sdf_path, _ = self.get_sdf_file()
+        ib_response = get_ib_predictions(sdf_path, models=models, images=images)
 
-        ib_logd_response = run_inductive_alogd_predict(sdf_path)[0]
-        ib_logd = {}
-        ib_logd["ilogd"] = ib_logd_response["prediction"]
-        ib_logd["measured"] = ib_logd_response["measured"]
-        ib_logd["latest_data_date"] = ib_logd_response["latest_data_date"]
+        for model, preds in ib_response.items():
+            if preds:
+                prediction = preds[0]
+                if images:
+                    prediction["interp_img_path"] = self.inductive_img_path(
+                        model, "interp", prediction["interp_image"]
+                    )
+                    prediction["probs_img_path"] = self.inductive_img_path(
+                        model, "probs", prediction["probs_image"]
+                    )
 
-        return ib_logd
+        return ib_response
 
-    def predict_lms(self, species, image=True):
-        """
-        Generates predicted values for LMs from the Inductive API
-        :param species: H or R for human or rat LM predictions
-        :param image: boolean for if interpretation images should be generated
-        :return: dictionary with "prediction, "measured", and "out_of_domain" values and images
-        """
-        infile, _ = self.get_sdf_file()
-        # Only passed one compound, so use only element in list
-        lm_prediction = run_inductive_lm_predict(infile, species, image)[0]
-
-        # Save base64 images to files
-        if image:
-            lm_prediction["interp_img_path"] = self.inductive_img_path(
-                species, "interp", lm_prediction["interp_image"]
-            )
-            lm_prediction["probs_img_path"] = self.inductive_img_path(
-                species, "probs", lm_prediction["probs_image"]
-            )
-
-        return lm_prediction
-
-    def inductive_img_path(self, species, name, img):
+    def inductive_img_path(self, model, name, img):
         """
         Saves given file and returns media path to the image
         :param species: the species of LMs being predicted
         :param name: the name of the image type ("interp" or "probs")
         :param img: the base64 image to save
         """
-        filename = f"{self.name}_{species.lower()}lm_{name}_img.png"
+        model = "_".join(model.split("_")[1:])
+        filename = f"{self.name}_{model}_{name}_img.png"
         filepath = compound_files_path(self, filename)
 
         img = base64.decodebytes(str.encode(img))
@@ -864,31 +856,33 @@ class Compound(models.Model):
         mol = self.mol(hydrogens=hydrogens)
         mol_w_props = RDKitWrappers.generate_properties(mol)
         if inductive:
-            # Get LogD predictions
-            ilogd_predict = self.predict_logd()
-            mol_w_props.SetProp("logd_prediction", ilogd_predict["ilogd"])
-            mol_w_props.SetProp("logd_measured", ilogd_predict["measured"])
-            mol_w_props.SetProp(
-                "latest_logd_data_date", ilogd_predict["latest_data_date"]
-            )
-            # Get Rat LM predictions
-            rlm_predict = self.predict_lms(species="R")
-            mol_w_props.SetProp("rlm_prediction", rlm_predict["prediction"])
-            mol_w_props.SetProp("rlm_measured", rlm_predict["measured"])
-            mol_w_props.SetProp("rlm_probabilities", rlm_predict["probs_img_path"])
-            mol_w_props.SetProp("rlm_interpretation", rlm_predict["interp_img_path"])
-            mol_w_props.SetProp("rlm_ood", rlm_predict["out_of_domain"])
-            mol_w_props.SetProp("latest_lm_data_date", rlm_predict["latest_data_date"])
-            mol_w_props.SetProp("model_version", rlm_predict["model_version"])
-            # Get Human LM predictions
-            hlm_predict = self.predict_lms(species="H")
-            mol_w_props.SetProp("hlm_prediction", hlm_predict["prediction"])
-            mol_w_props.SetProp("hlm_measured", hlm_predict["measured"])
-            mol_w_props.SetProp("hlm_probabilities", hlm_predict["probs_img_path"])
-            mol_w_props.SetProp("hlm_interpretation", hlm_predict["interp_img_path"])
-            mol_w_props.SetProp("hlm_ood", hlm_predict["out_of_domain"])
-            mol_w_props.SetProp("latest_lm_data_date", hlm_predict["latest_data_date"])
-            mol_w_props.SetProp("model_version", hlm_predict["model_version"])
+            all_predictions = self.get_ib_predictions()
+            for model, predictions in all_predictions.items():
+                if predictions:
+                    prediction = predictions[0]
+                    # Adjust model names to be more human readable
+                    model = model.split("_")[1]
+                    if model == "perm":
+                        model = "permeability"
+                    if model == "kinetic":
+                        model = "kinetic_solubility"
+                    if "pka" in model:
+                        kind = "basic" if "b" in model else "acidic"
+                        model = f"most_{kind}_pka"
+
+                    mol_w_props.SetProp(f"{model}_prediction", prediction["prediction"])
+                    mol_w_props.SetProp(f"{model}_measured", prediction["measured"])
+                    mol_w_props.SetProp(
+                        f"{model}_probabilities", prediction["probs_img_path"]
+                    )
+                    mol_w_props.SetProp(
+                        f"{model}_interpretation", prediction["interp_img_path"]
+                    )
+                    mol_w_props.SetProp(f"{model}_ood", prediction["out_of_domain"])
+                    mol_w_props.SetProp(
+                        f"latest_{model}_data_date", prediction["latest_data_date"]
+                    )
+                    mol_w_props.SetProp(f"{model}_version", prediction["model_version"])
 
         if dn_id and self.dn_id:
             mol_w_props.SetProp("dn_id", self.dn_id)

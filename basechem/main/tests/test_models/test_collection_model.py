@@ -755,7 +755,7 @@ class CollectionTestCase(BasechemTestCase):
                 v = prop_dict[co.pk]
                 self.assertIn("mw", v)
                 self.assertIn("logd_prediction", v)
-                self.assertNotEqual(co.compound.predict_logd(), None)
+                self.assertNotEqual(co.compound.get_ib_predictions(images=False), None)
 
         with self.subTest("Run LM predictions"):
             cos = self.collection_one_cpd.compound_occurrences.all()

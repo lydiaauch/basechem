@@ -166,9 +166,11 @@ class SubmitCompoundsView(LoginRequiredMixin, FormView):
         """
         metadata = {}
         if self.get_form_class() == PropCalcForm:
-            metadata["props_to_show"] = form.cleaned_data.get(
-                "counts", []
-            ) + form.cleaned_data.get("physiochemical", [])
+            metadata["props_to_show"] = (
+                form.cleaned_data.get("counts", [])
+                + form.cleaned_data.get("physiochemical", [])
+                + form.cleaned_data.get("predicted", [])
+            )
 
         if self.get_form_class() == MMPSubmitForm:
             metadata["mmp_analysis"] = {

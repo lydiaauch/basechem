@@ -14,8 +14,7 @@ from rdkit import Chem
 
 from basechem.common.mmpdb_utils import initialize_mmpdb
 from basechem.common.mocks.mock_inductive_utils import (
-    mock_run_inductive_alogd_predict,
-    mock_run_inductive_lm_predict,
+    mock_get_ib_predictions,
     mock_update_inductive_logd_data,
 )
 from basechem.common.mocks.mock_mayachem_utils import mock_generate_torsion_alerts_NOOP
@@ -371,21 +370,16 @@ class BasechemTestCase(BasechemNoMockTestCase):
     def setUpClass(cls):
         super().setUpClass()
         # Set up mock patch for InductiveBio
-        cls.main_run_inductive_lm_predict_patch = mock.patch(
-            "basechem.main.models.compound_models.run_inductive_lm_predict",
-            mock_run_inductive_lm_predict,
+        cls.main_get_ib_predictions_patch = mock.patch(
+            "basechem.main.models.compound_models.get_ib_predictions",
+            mock_get_ib_predictions,
         )
-        cls.common_run_inductive_lm_predict_patch = mock.patch(
-            "basechem.common.propcalc_utils.run_inductive_lm_predict",
-            mock_run_inductive_lm_predict,
+        cls.common_get_ib_predictions_patch = mock.patch(
+            "basechem.common.propcalc_utils.get_ib_predictions",
+            mock_get_ib_predictions,
         )
-        cls.main_run_inductive_alogd_predict_patch = mock.patch(
-            "basechem.main.models.compound_models.run_inductive_alogd_predict",
-            mock_run_inductive_alogd_predict,
-        )
-        cls.main_run_inductive_lm_predict_patch.start()
-        cls.common_run_inductive_lm_predict_patch.start()
-        cls.main_run_inductive_alogd_predict_patch.start()
+        cls.main_get_ib_predictions_patch.start()
+        cls.common_get_ib_predictions_patch.start()
 
         # Set up mock patch for Mayachem
         cls.generate_torsion_alerts_patch = mock.patch(
@@ -407,9 +401,8 @@ class BasechemTestCase(BasechemNoMockTestCase):
     def tearDownClass(cls):
         super().tearDownClass()
         # Tear down mock patch for InductiveBio
-        cls.main_run_inductive_lm_predict_patch.stop()
-        cls.common_run_inductive_lm_predict_patch.stop()
-        cls.main_run_inductive_alogd_predict_patch.stop()
+        cls.main_get_ib_predictions_patch.stop()
+        cls.common_get_ib_predictions_patch.stop()
 
         # Tear down mock patch for Mayachem
         cls.generate_torsion_alerts_patch.stop()
