@@ -74,9 +74,9 @@ class TasksTestCase(BasechemTestCase):
         last_week = datetime.datetime.today() - datetime.timedelta(days=timedelt)
         last_week_fmt = last_week.strftime("%Y%m%d")
         # Check DTX for mols
-        mols = IB_PUT_UTILS().get_denali_logd_data(date=last_week_fmt)
+        mols = IB_PUT_UTILS().get_generic_logd_data(date=last_week_fmt)
         update_ib_model_data(timedelt, [IB_LOGD])
-        sdf_path = f"/tmp/{last_week_fmt}_denali_logd_dtx.sdf"
+        sdf_path = f"/tmp/{last_week_fmt}_generic_logd_dtx.sdf"
 
         if mols:
             self.assertTrue(os.path.exists(sdf_path))

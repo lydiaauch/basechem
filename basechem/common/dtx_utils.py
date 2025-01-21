@@ -247,7 +247,7 @@ try:
             if hasattr(self, func_name) and callable(func := getattr(self, func_name)):
                 return func(**kwargs)
 
-        def get_denali_logd_data(self, date):
+        def get_generic_logd_data(self, date):
             """
             Wrapper to get the logD avg of DNs that have results since the given
             date from the LogD Agg table in Dotmatics

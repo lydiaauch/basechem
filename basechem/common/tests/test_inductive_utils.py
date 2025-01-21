@@ -107,6 +107,6 @@ class InductiveBioUtilsTestCase(BasechemNoMockTestCase):
         with open(input_file, "w") as f:
             pass
 
-        put_data_to_ib(input_file, "denali_logd")
+        put_data_to_ib(input_file, "generic_logd")
 
         self.assertEqual(len(mail.outbox), 0)
