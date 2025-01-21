@@ -15,7 +15,7 @@ from rdkit import Chem
 from basechem.common.mmpdb_utils import initialize_mmpdb
 from basechem.common.mocks.mock_inductive_utils import (
     mock_get_ib_predictions,
-    mock_update_inductive_logd_data,
+    mock_put_data_to_ib,
 )
 from basechem.common.mocks.mock_mayachem_utils import mock_generate_torsion_alerts_NOOP
 from basechem.common.tests.test_constants import BAD_MOLTEXT, MMP_MOLTEXT, MOLTEXT
@@ -312,17 +312,17 @@ class BasechemNoMockTestCase(TestCase):
         super().setUpClass()
         initialize_mmpdb("test")
         # Set up mock patch for InductiveBio
-        cls.main_update_inductive_logd_data_patch = mock.patch(
-            "basechem.main.tasks.update_inductive_logd_data",
-            mock_update_inductive_logd_data,
+        cls.main_put_data_to_ib_patch = mock.patch(
+            "basechem.main.tasks.put_data_to_ib",
+            mock_put_data_to_ib,
         )
-        cls.main_update_inductive_logd_data_patch.start()
+        cls.main_put_data_to_ib_patch.start()
 
     @classmethod
     def tearDownClass(cls):
         super().tearDownClass()
         # Tear down mock patch for InductiveBio PUT
-        cls.main_update_inductive_logd_data_patch.stop()
+        cls.main_put_data_to_ib_patch.stop()
         for dirpath in glob.glob(f"{settings.PROJECT_ROOT}/tmp*"):
             shutil.rmtree(dirpath)
 

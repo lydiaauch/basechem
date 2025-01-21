@@ -11,14 +11,15 @@ from django_q.models import Task
 from django_q.tasks import async_task
 from rdkit import Chem
 
-from basechem.common.dtx_utils import get_logd_agg_data
+from basechem.common.constants import IB_LOGD
+from basechem.common.dtx_utils import IB_PUT_UTILS
 from basechem.common.tests.base import BasechemTestCase
 from basechem.main.models.collection_models import Collection
 from basechem.main.tasks import (
     hide_outdated_results,
     hide_task_group,
     monitor_toklat_scoring,
-    update_logd_model_data,
+    update_ib_model_data,
 )
 from basechem.main.tests.factories import CollectionFactory, CompoundOccurrenceFactory
 
@@ -64,24 +65,27 @@ class TasksTestCase(BasechemTestCase):
             self.assertEqual(Task.objects.filter(group=group_name).count(), 0)
             self.assertEqual(Task.objects.filter(id__in=[t_id1, t_id2]).count(), 2)
 
-    def test_update_logd_model_data(self):
+    def test_update_ib_model_data(self):
         """
         Test LogD data is pulled from DTX but not PUT to Inductive (since TEST)
         when there are new mols (variable based on DTX refreshes)
         """
-        last_week = datetime.datetime.today() - datetime.timedelta(days=8)
+        timedelt = 80  # pick a date a long time ago so there is almost always data
+        last_week = datetime.datetime.today() - datetime.timedelta(days=timedelt)
         last_week_fmt = last_week.strftime("%Y%m%d")
         # Check DTX for mols
-        mols = get_logd_agg_data(last_week_fmt)
-        update_logd_model_data()
-        sdf_path = f"/tmp/{last_week_fmt}_logd_dtx.sdf"
+        mols = IB_PUT_UTILS().get_denali_logd_data(date=last_week_fmt)
+        update_ib_model_data(timedelt, [IB_LOGD])
+        sdf_path = f"/tmp/{last_week_fmt}_denali_logd_dtx.sdf"
 
         if mols:
             self.assertTrue(os.path.exists(sdf_path))
             for mol in Chem.SDMolSupplier(sdf_path):
                 props_dict = mol.GetPropsAsDict()
                 self.assertEqual(len(props_dict), 4)
-                self.assertTrue("logd_avg" in props_dict.keys())
+                self.assertTrue("measured_value" in props_dict.keys())
+                self.assertTrue("most_recent_date" in props_dict.keys())
+                self.assertTrue("molecule_id" in props_dict.keys())
 
         else:
             self.assertFalse(os.path.exists(sdf_path))
