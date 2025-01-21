@@ -66,7 +66,7 @@ class Command(BaseCommand):
             if not Schedule.objects.filter(name=name).exists():
                 Schedule.objects.create(
                     name=name,
-                    func="basechem.main.tasks.update_logd_model_data",
+                    func="basechem.main.tasks.update_ib_model_data",
                     schedule_type=Schedule.WEEKLY,
                     kwargs={"q_options": {"broker_name": "default"}},
                 )
