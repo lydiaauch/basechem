@@ -32,6 +32,7 @@ def run_bulk_analysis(infile, project_code, analysis):
             name=name,
             task_name=name,
             hook="basechem.main.tasks.simple_email_task_hook",
+            cluster="dock",
         )
     elif analysis == ALIGN:
         collection = _bulk_collection_setup(infile, project_code, name)

@@ -581,6 +581,7 @@ class AddCompoundView(LoginRequiredMixin, UpdateView):
                 reference=self.collection._get_ref_obj(ref_string),
                 task_name=co.get_dock_task_name(ref_string),
                 group=self.collection.get_dock_group_name(ref_string),
+                cluster="dock",
             )
         elif self.analysis == ESP:
             ref_string = self.group_name.split("_")[-1]

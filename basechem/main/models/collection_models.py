@@ -826,6 +826,7 @@ class Collection(models.Model):
                 task_name=co.get_dock_task_name(ref_string),
                 group=self.get_dock_group_name(ref_string),
                 hook="basechem.main.tasks.task_completion_hook",
+                cluster="dock",
             )
 
     def _collect_dock_references(self):
