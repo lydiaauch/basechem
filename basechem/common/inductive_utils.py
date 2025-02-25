@@ -78,7 +78,7 @@ def _parse_inductive_response(response_dict):
     """
     Parse the InductiveBio predict response into Basechem preferred format
     :param response_dict: json response from Inductive predict
-    :return: parsed response dict of the form
+    :return: list of parsed response dict of the form
         {
         "name": "",
         "model_version": "",

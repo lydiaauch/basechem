@@ -37,9 +37,8 @@ from basechem.common.analysis_utils import (
 from basechem.common.constants import (
     ADMIN_NOTIFICATION,
     ALL_IB_MODELS,
-    IB_HLM,
-    IB_LOGD,
-    IB_RLM,
+    IB_APKA,
+    IB_BPKA,
 )
 from basechem.common.dtx_utils import get_agg_ic50_data, get_registered_structures
 from basechem.common.file_utils import get_tmp_file
@@ -808,10 +807,12 @@ class Compound(models.Model):
         :param models: list of models to generate predictions for
         :return: dictionary of predictions where the model name is the key
         """
+        sdf_path, _ = self.get_sdf_file()
+
         # If no models provided, run all available
         if not models:
-            models = ALL_IB_MODELS
-        sdf_path, _ = self.get_sdf_file()
+            models = ALL_IB_MODELS.copy()
+
         ib_response = get_ib_predictions(sdf_path, models=models, images=images)
 
         for model, preds in ib_response.items():
