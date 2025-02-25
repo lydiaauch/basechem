@@ -312,7 +312,7 @@ class SubmitCompoundsTestCase(BasechemViewTestMixin, BasechemTestCase):
             "project": "",
         }
         response = self.client.post(url, data=data, follow=True)
-        self.assertEqual(len(response.context["form"].fields), 8)
+        self.assertEqual(len(response.context["form"].fields), 9)
         self.assertIsNotNone(response.context["form"].errors)
         self.assertEqual(
             ["This field is required."], response.context["form"].errors["project"]
@@ -323,7 +323,7 @@ class SubmitCompoundsTestCase(BasechemViewTestMixin, BasechemTestCase):
 
         data = {"project": self.test_project}
         response = self.client.post(url, data=data, follow=True)
-        self.assertEqual(len(response.context["form"].fields), 8)
+        self.assertEqual(len(response.context["form"].fields), 9)
         self.assertIsNotNone(response.context["form"].errors)
         # Check field error exists but has no message
         self.assertEqual([""], response.context["form"].errors["upload_file"])
@@ -351,7 +351,7 @@ class SubmitCompoundsTestCase(BasechemViewTestMixin, BasechemTestCase):
         Tests upload to the propcalc form with Inductive Props requested
         """
         url = reverse("submit", kwargs={"nextview": PROPCALC})
-        data = {"physiochemical": [MW, TPSA, CLOGP, ALOGD]}
+        data = {"physiochemical": [MW, TPSA, CLOGP], "predicted": [ALOGD]}
         response = self.upload_sdf(url, data)
 
         self.assertEqual(response.status_code, 200)

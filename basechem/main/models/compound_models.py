@@ -830,7 +830,7 @@ class Compound(models.Model):
     def inductive_img_path(self, model, name, img):
         """
         Saves given file and returns media path to the image
-        :param species: the species of LMs being predicted
+        :param model: the ML model being predicted
         :param name: the name of the image type ("interp" or "probs")
         :param img: the base64 image to save
         """

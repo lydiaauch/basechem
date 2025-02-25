@@ -143,34 +143,39 @@ def _parse_inductive_response(response_dict):
 #######################
 
 
-def update_inductive_logd_data(new_data_filepath):
+def put_data_to_ib(new_data_filepath, model):
     """
-    PUT given file with logD data to Inductive endpoint
+    PUT given file with measured data to Inductive endpoint
     :param new_data_filepath: path to file containing new data
     """
-    url = "https://api.inductive.bio/data/sdf_upload"
+    url = "https://api.inductive.bio/0.1/data/sdf_upload"
     headers = {
         "X-API-KEY": settings.INDUCTIVE_API_KEY,
         "X-CUSTOMER-ID": settings.INDUCTIVE_CUSTOMER_ID,
     }
 
+    if model not in ALL_IB_MODELS:
+        admin_email_message = f"{model} is not recognized by the InductiveBio API"
+        mail_admins(ADMIN_FAILURE, admin_email_message)
+        return {}
+
     with open(new_data_filepath) as f:
         sdf_text = f.read()
 
         if sdf_text:
-            logd_body = {
+            data_body = {
                 "data": sdf_text,
                 "project_column": "project_code",
-                "molecule_id_column": "dn_id",
+                "molecule_id_column": "molecule_id",
                 "properties_dict": {
-                    "logd_avg": {
+                    "measured_value": {
                         "date_column": "most_recent_date",
-                        "model_ids": ["denali_logd"],
+                        "model_ids": [f"{model}"],
                     }
                 },
             }
 
-            response = requests.put(url, json=logd_body, headers=headers)
+            response = requests.put(url, json=data_body, headers=headers)
             r = response.json()
             if r.get("status") != "SUCCESS":
                 admin_email_message = f"InductiveBio API failed to PUT new LogD data for the file: {new_data_filepath} with the response {r}"

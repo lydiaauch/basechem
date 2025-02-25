@@ -22,21 +22,21 @@ from basechem.common.analysis_utils import (
     collect_torsion_results,
 )
 from basechem.common.analytic import TASK, Analytic
-from basechem.common.constants import ADMIN_FAILURE, ADMIN_NOTIFICATION
+from basechem.common.constants import ADMIN_FAILURE, ADMIN_NOTIFICATION, ALL_IB_MODELS
 from basechem.common.dtx_utils import (
     ASSAY_DATA_COLUMNS,
     DTX_LM_STABILITY_EXP_ID,
     DTX_LM_STABILITY_SCRIPT_ID,
     DTX_PROPCALC_EXP_ID,
     DTX_PROPCALC_SCRIPT_ID,
+    IB_PUT_UTILS,
     get_all_dn_after,
     get_all_dtx_properties,
     get_ic50_data,
-    get_logd_agg_data,
     get_registered_structures,
     upload_file_to_dtx,
 )
-from basechem.common.inductive_utils import update_inductive_logd_data
+from basechem.common.inductive_utils import put_data_to_ib
 from basechem.common.mmpdb_utils import _fragment_mmpdb, _index_mmpdb, loadprops_mmpdb
 from basechem.common.propcalc_utils import (
     collect_propcalc_results,
@@ -157,28 +157,39 @@ def dtx_propcalc(date=None):
     collection.delete()
 
 
-def update_logd_model_data():
+def update_ib_model_data(timedelt=8, models=ALL_IB_MODELS):
     """
-    Polls Dotmatics for new logD data from the past week, sends to Inductive
-    and checks current prediction accuracy
+    Polls Dotmatics for new data from the past week for all models,
+    sends to Inductive endpoint
+    :param timedelt: number of days to look back for new data
+    :param models: list of model names to update data for
     """
-    last_week = datetime.datetime.today() - datetime.timedelta(days=8)
+    last_week = datetime.datetime.today() - datetime.timedelta(days=timedelt)
     last_week_fmt = last_week.strftime("%Y%m%d")
-    logd_data_mols = get_logd_agg_data(last_week_fmt)
 
-    if logd_data_mols:
-        tmp_data_file = f"/tmp/{last_week_fmt}_logd_dtx.sdf"
-        writer = Chem.SDWriter(tmp_data_file)
-        for mol in logd_data_mols:
-            writer.write(mol)
-        writer.close()
+    for model in models:
+        try:
+            data_mols = IB_PUT_UTILS().pick_model(model, date=last_week_fmt)
+        except KeyError as e:
+            data_mols = ""
+            mail_admins(
+                ADMIN_NOTIFICATION,
+                f"There is no data retrieval function in dtx_utils.py for {model}.",
+            )
 
-        # Extra check to not send InductiveBio DTX TEST data
-        upload_response = ""
-        if "test" not in settings.DTX_HOST:
-            upload_response = update_inductive_logd_data(tmp_data_file)
+        if data_mols:
+            tmp_data_file = f"/tmp/{last_week_fmt}_{model}_dtx.sdf"
+            writer = Chem.SDWriter(tmp_data_file)
+            for mol in data_mols:
+                writer.write(mol)
+            writer.close()
 
-        return upload_response
+            # Extra check to not send InductiveBio DTX TEST data
+            upload_response = ""
+            if "test" not in settings.DTX_HOST and "prod" in settings.ENVIRONMENT:
+                upload_response = put_data_to_ib(tmp_data_file, model)
+
+            return upload_response
 
 
 def update_mmpdb(dn_id=None):  # pragma: no cover
