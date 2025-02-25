@@ -349,8 +349,8 @@ def update_series_data(series_df):
     :param series_df: a dataframe containing just series assay data
     """
     for _, row in series_df.iterrows():
-        ser = Series.objects.get(dn_id=row["DN_ID"])
-        if ser:
+        sers = Series.objects.filter(dn_id__contains=row["DN_ID"])
+        for ser in sers:
             ser.assay_data[row["Assay_Name"]] = row["IC50_Value"]
             ser.save()
 

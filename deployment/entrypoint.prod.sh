@@ -14,6 +14,7 @@ then
     echo "PostgreSQL started"
 fi
 
+python manage.py createcachetable
 python manage.py makemigrations
 python manage.py migrate
 python manage.py startup

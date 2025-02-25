@@ -11,10 +11,11 @@ DOMAIN = os.environ.get("DOMAIN", "*")
 WEBSERVER_ROOT = os.environ.get("WEBSERVER_ROOT", "/home/app/web/")
 
 if ENVIRONMENT == "prod":
-    Q_CLUSTER["workers"] = 16  # default queue
+    Q_CLUSTER["workers"] = 8  # default queue
     Q_CLUSTER["ALT_CLUSTERS"]["fast"][
         "workers"
     ] = 16  # propcalc and new_collection only rn
+    Q_CLUSTER["ALT_CLUSTERS"]["dock"]["workers"] = 8
     Q_CLUSTER["ALT_CLUSTERS"]["slow"]["workers"] = 4  # torsion only rn
     INDUCTIVE_VERSION = "latest"
 

@@ -37,3 +37,5 @@ log/
 basechem/common/mmpdb_data/cache.fragdb
 basechem/common/ESP_DNN/core*
 basechem/common/ESP_DNN/qemu*
+.ipynb_checkpoints/
+*.ipynb
