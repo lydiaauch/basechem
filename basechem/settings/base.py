@@ -191,23 +191,20 @@ Q_CLUSTER = {
     "retry": 14401,  # Never retry (because retry > timeout and ack_failures is True)
     "max_attempts": 1,
     "cpu_affinity": 3,
+    "daemonize_workers": False,  # Basically all analyses need to use ls-align which starts new processpools
     "ALT_CLUSTERS": {
         "slow": {
             "timeout": 604800,  # timeout after 7 days
             "retry": 604801,
             "workers": 1,
+            "daemonize_workers": True,
         },
         "fast": {
             "timeout": 2400,  # timeout after 40 minutes
             "retry": 2401,
             "workers": 2,
             "cpu_affinity": 3,
-        },
-        "dock": {  # queue specifically for docker tasks to be able to spawn child processes
-            "timeout": 14400,  # timeout after 40 minutes
-            "retry": 14401,
-            "workers": 2,
-            "daemonize_workers": False,
+            "daemonize_workers": True,
         },
     },
 }

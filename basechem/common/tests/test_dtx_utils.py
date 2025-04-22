@@ -1,6 +1,6 @@
 from django.test import TestCase, tag
-
-from basechem.common.dtx_utils import check_dtx_for_inchi
+from rdkit import Chem
+from basechem.common.dtx_utils import IB_PUT_UTILS, check_dtx_for_inchi
 
 
 @tag("local", "dtx", "external")
@@ -33,3 +33,21 @@ class DTXUtilTest(TestCase):
             inchi = "InChI=1/C13H16N2O3S/c1-10-9-18-11(2)8-15(10)19(16,17)13-5-3-4-12(6-13)7-14/h3-6,10-11H,8-9H2,1-2H3/t10?,11?"
             # Both are mixtures -> keep both
             self.assertEqual("DN0022385,DN0023392", check_dtx_for_inchi(inchi))
+
+
+    def test_get_tenvie_logd_data(self):
+        """
+        Test logD data retrieval returns mols with expected data
+        """
+        # semi-recent date since testing against prod
+        date = datetime.datetime.today() - datetime.timedelta(days=15)
+        mols = IB_PUT_UTILS()._get_tenvie_logd_data(date)
+
+        if mols:
+            for mol in mols:
+                props_dict = mol.GetPropsAsDict()
+                self.assertEqual(len(props_dict), 4)
+                self.assertTrue("measured_value" in props_dict.keys())
+                self.assertTrue("most_recent_date" in props_dict.keys())
+                self.assertTrue("molecule_id" in props_dict.keys())
+                self.assertTrue("project_code" in props_dict.keys())

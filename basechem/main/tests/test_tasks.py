@@ -70,25 +70,35 @@ class TasksTestCase(BasechemTestCase):
         Test LogD data is pulled from DTX but not PUT to Inductive (since TEST)
         when there are new mols (variable based on DTX refreshes)
         """
-        timedelt = 80  # pick a date a long time ago so there is almost always data
+        timedelt = 80 
         last_week = datetime.datetime.today() - datetime.timedelta(days=timedelt)
         last_week_fmt = last_week.strftime("%Y%m%d")
-        # Check DTX for mols
-        mols = IB_PUT_UTILS().get_generic_logd_data(date=last_week_fmt)
-        update_ib_model_data(timedelt, [IB_LOGD])
-        sdf_path = f"/tmp/{last_week_fmt}_generic_logd_dtx.sdf"
 
-        if mols:
-            self.assertTrue(os.path.exists(sdf_path))
-            for mol in Chem.SDMolSupplier(sdf_path):
-                props_dict = mol.GetPropsAsDict()
-                self.assertEqual(len(props_dict), 4)
-                self.assertTrue("measured_value" in props_dict.keys())
-                self.assertTrue("most_recent_date" in props_dict.keys())
-                self.assertTrue("molecule_id" in props_dict.keys())
+        with self.subTest("New data with correct models"):
+            models = [IB_LOGD]
+            response = update_ib_model_data(timedelt, models)
+            self.assertEqual(response, {"tenvie_logd": "TEST"})
 
-        else:
-            self.assertFalse(os.path.exists(sdf_path))
+            for model in models:
+                sdf_path = f"/tmp/{last_week_fmt}_{model}_dtx.sdf"
+                mols = IB_PUT_UTILS().pick_model(model, date=last_week)
+
+                if mols:
+                    self.assertTrue(os.path.exists(sdf_path))
+                    for mol in Chem.SDMolSupplier(sdf_path):
+                        props_dict = mol.GetPropsAsDict()
+                        self.assertEqual(len(props_dict), 4)
+                        self.assertTrue("measured_value" in props_dict.keys())
+                        self.assertTrue("most_recent_date" in props_dict.keys())
+                        self.assertTrue("molecule_id" in props_dict.keys())
+                        self.assertTrue("project_code" in props_dict.keys())
+                else:
+                    self.assertFalse(os.path.exists(sdf_path))
+
+        with self.subTest("Bad model for data upload"):
+            models = ["FAKEMODEL"]
+            response = update_ib_model_data(timedelt, models)
+            self.assertIn("No data retrieval", response[models[0]])
 
     def test_monitor_toklat_scoring(self):
         """

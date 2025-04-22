@@ -62,7 +62,7 @@ class Command(BaseCommand):
                     kwargs={"q_options": {"broker_name": "default"}},
                 )
 
-            name = "Update aLogD Model Data"
+            name = "Update IB Model Data"
             if not Schedule.objects.filter(name=name).exists():
                 Schedule.objects.create(
                     name=name,
@@ -98,7 +98,7 @@ class Command(BaseCommand):
                     name=name,
                     func="basechem.main.tasks.monitor_toklat_scoring",
                     schedule_type=Schedule.WEEKLY,
-                    kwargs={"q_options": {"broker_name": "dock"}},
+                    kwargs={"q_options": {"broker_name": "default"}},
                     # First run should occur at 11:00 PM next Friday
                     next_run=datetime.datetime.combine(
                         today + datetime.timedelta(days=(4 - today.weekday())),
