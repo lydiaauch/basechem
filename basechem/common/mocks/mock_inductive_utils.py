@@ -123,9 +123,9 @@ def mock_get_ib_predictions(input_file, models, images=True):
     return return_data
 
 
-def mock_update_inductive_logd_data(input_file):
+def mock_put_data_to_ib(input_file, model):
     """
-    Mock for `update_inductive_logd_data` to use in all test cases
+    Mock for `put_data_to_ib` to use in all test cases
     Does nothing since we don't want to PUT any data
     """
     return

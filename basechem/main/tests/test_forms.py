@@ -183,7 +183,8 @@ class PropCalcFormTestCase(BasechemFormTestMixin, TestCase):
             "upload_file": self.test_sdf_file,
             "moltext": self.moltext,
             "counts": [ACCEPTORS],
-            "physiochemical": [TPSA, CLOGP, ALOGD],
+            "physiochemical": [TPSA, CLOGP],
+            "predicted": [ALOGD],
         }
         form = CompoundIntakeForm(
             current_user=self.user, data=data, files=self.file_data

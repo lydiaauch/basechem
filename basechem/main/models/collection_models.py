@@ -947,7 +947,7 @@ class Collection(models.Model):
             esp_map_data = s.generate_ligand_esp_map()
             if not esp_map_data.get("dx"):
                 logger.error(
-                    f"Skipping series {series.name} in ESP map generation because APBS failed to generate a DX file."
+                    f"Skipping series {s.name} in ESP map generation because APBS failed to generate a DX file."
                 )
                 continue
             results["references"][f"s-{s.pk}"] = esp_map_data

@@ -67,9 +67,9 @@ try:
     )
     from dtxwrapper.common import construct_query_data
 
-    #################
-    ###   UTILS   ###
-    #################
+    ##########################
+    ###   BASECHEM UTILS   ###
+    ##########################
 
     def check_dtx_for_inchi(inchi):
         """
@@ -184,44 +184,6 @@ try:
         """
         return get_parsed_den_studies_ic50_agg_merged_v2(dn_ids)
 
-    def get_logd_agg_data(date):
-        """
-        Wrapper to get the logD avg of DNs that have results since the given
-        date from the LogD Agg table in Dotmatics
-        :param date: date to query for more recent data in the form YYYYMMDD
-        :returns: a list of mol objects with relevant properties
-        """
-        # Get new data since the given date
-        query_params = [("EXP_CREATED_DATE_JMAX", "591", "greaterthan", date)]
-        query_data = construct_query_data(query_params)
-
-        mol_results = []
-        dn_ids = query_and_parse_dtx("10000", query_data)
-        if dn_ids:
-            logd_data_dict = get_parsed_denali_logd_agg(dn_ids)
-            structure_dict = get_parsed_structure(dn_ids)
-
-            for dn, moltext in structure_dict.items():
-                data = logd_data_dict[dn].get("data").get("1", "")
-                if data:
-                    # For some reason DTX has 4 compounds that don't follow date convention
-                    if len(data.get("EXP_CREATED_DATE_JMAX", "")) > 8:
-                        continue
-                    try:
-                        mol = Chem.MolFromMolBlock(moltext)
-                        mol.SetProp("_Name", dn)
-                        mol.SetProp("dn_id", dn)
-                        mol.SetProp("logd_avg", data.get("LOG_D_JMEAN"))
-                        mol.SetProp(
-                            "exp_most_recent_date", data.get("EXP_CREATED_DATE_JMAX")
-                        )
-                        mol.SetProp("project_code", data.get("PROJECT_NAME"))
-                        mol_results.append(mol)
-                    except:
-                        continue
-
-        return mol_results
-
     def get_registered_structures(dn_ids):
         """
         Get moltext for the given DN IDs
@@ -263,6 +225,67 @@ try:
         elif date:
             return query_and_parse_reg_data_vw_by_reg_date(date)
 
+    ###########################
+    ###   INDUCTIVE UTILS   ###
+    ###########################
+
+    class IB_PUT_UTILS:
+        """
+        These functions are used for retrieving data that will be sent to InductiveBio for updating
+        ML models. Each ML model should have an equivalent function. Function names must follow the
+        format: `get_<model>_data(date_str)` and return an SDF with the properties:
+        "molecule_id", "most_recent_date", and "measured_value"
+        """
+
+        def pick_model(self, model, **kwargs):
+            """
+            Given a model name, return the appropriate function to get data for that model
+            :param model: a string, the name of the model
+            :returns: a function, the function to get data for the model
+            """
+            func_name = f"get_{model}_data"
+            if hasattr(self, func_name) and callable(func := getattr(self, func_name)):
+                return func(**kwargs)
+
+        def get_generic_logd_data(self, date):
+            """
+            Wrapper to get the logD avg of DNs that have results since the given
+            date from the LogD Agg table in Dotmatics
+            :param date: date string to query for more recent data in the form YYYYMMDD
+            :returns: a list of mol objects with relevant properties
+            """
+            # Get new data since the given date
+            query_params = [("EXP_CREATED_DATE_JMAX", "591", "greaterthan", date)]
+            query_data = construct_query_data(query_params)
+
+            mol_results = []
+            dn_ids = query_and_parse_dtx("10000", query_data)
+
+            if dn_ids:
+                logd_data_dict = get_parsed_denali_logd_agg(dn_ids)
+                structure_dict = get_parsed_structure(dn_ids)
+
+                for dn, moltext in structure_dict.items():
+                    data = logd_data_dict[dn].get("data").get("1", "")
+                    if data:
+                        # For some reason DTX has 4 compounds that don't follow date convention
+                        if len(data.get("EXP_CREATED_DATE_JMAX", "")) > 8:
+                            continue
+                        try:
+                            mol = Chem.MolFromMolBlock(moltext)
+                            mol.SetProp("_Name", dn)
+                            mol.SetProp("molecule_id", dn)
+                            mol.SetProp("measured_value", data.get("LOG_D_JMEAN"))
+                            mol.SetProp(
+                                "most_recent_date", data.get("EXP_CREATED_DATE_JMAX")
+                            )
+                            mol.SetProp("project_code", data.get("PROJECT_NAME"))
+                            mol_results.append(mol)
+                        except:
+                            continue
+
+            return mol_results
+
 except ImportError:
     #################################
     #             STUBS             #
@@ -295,15 +318,6 @@ except ImportError:
         :returns: a dictionary of the form {dn_id: aggregate_ic50_data}
         """
         return {dn_id: {} for dn_id in dn_ids}
-
-    def get_logd_agg_data(date):
-        """
-        Wrapper to get the logD avg of DNs that have results since the given
-        date from the LogD Agg table in Dotmatics
-        :param date: date to query for more recent data in the form YYYYMMDD
-        :returns: a list of mol objects with relevant properties
-        """
-        return []
 
     def get_registered_structures(dn_ids):
         """
@@ -344,3 +358,16 @@ except ImportError:
         :param script_id: (optional) an int, the ID of a Dotmatics script to run upon upload
         """
         return
+
+    class IB_PUT_UTILS:
+        """
+        Return no functions ever
+        """
+
+        def pick_model(self, model, **kwargs):
+            """
+            Given a model name, return the appropriate function to get data for that model
+            :param model: a string, the name of the model
+            :returns: a function, the function to get data for the model
+            """
+            return

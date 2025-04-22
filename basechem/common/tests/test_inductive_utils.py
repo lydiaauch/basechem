@@ -2,10 +2,7 @@ from django.core import mail
 from django.test import tag
 
 from basechem.common.constants import IB_HLM, IB_LOGD, IB_RLM
-from basechem.common.inductive_utils import (
-    get_ib_predictions,
-    update_inductive_logd_data,
-)
+from basechem.common.inductive_utils import get_ib_predictions, put_data_to_ib
 from basechem.common.mocks.mock_inductive_utils import mock_get_ib_predictions
 from basechem.common.tests.base import BasechemNoMockTestCase
 
@@ -100,9 +97,9 @@ class InductiveBioUtilsTestCase(BasechemNoMockTestCase):
                     self.assertEqual(pred["interp_image"], "")
                     self.assertEqual(pred["probs_image"], "")
 
-    def test_update_inductive_logd_data(self):
+    def test_put_data_to_ib(self):
         """
-        Tests `update_inductive_logd_data` to make sure no email is sent with
+        Tests `put_data_to_ib` to make sure no email is sent with
         empty data
         """
         self.assertEqual(len(mail.outbox), 0)
@@ -110,6 +107,6 @@ class InductiveBioUtilsTestCase(BasechemNoMockTestCase):
         with open(input_file, "w") as f:
             pass
 
-        update_inductive_logd_data(input_file)
+        put_data_to_ib(input_file, "generic_logd")
 
         self.assertEqual(len(mail.outbox), 0)
