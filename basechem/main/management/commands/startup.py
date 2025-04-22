@@ -98,7 +98,7 @@ class Command(BaseCommand):
                     name=name,
                     func="basechem.main.tasks.monitor_toklat_scoring",
                     schedule_type=Schedule.WEEKLY,
-                    kwargs={"q_options": {"broker_name": "slow"}},
+                    kwargs={"q_options": {"broker_name": "dock"}},
                     # First run should occur at 11:00 PM next Friday
                     next_run=datetime.datetime.combine(
                         today + datetime.timedelta(days=(4 - today.weekday())),

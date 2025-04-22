@@ -1,0 +1,68 @@
+# Explicit large directory exclusions
+basechem/common/ESP_DNN/
+
+# Version control and environment
+.git
+.gitignore
+.env.*
+
+# Python cache files
+*.pyc
+__pycache__
+.pytest_cache
+**/__pycache__
+**/*.pyc
+
+# Node.js files
+node_modules
+npm-debug.log
+
+# Docker files
+Dockerfile*
+docker-compose*
+
+# Documentation and README
+README.md
+docs/
+**/docs/
+
+# Test and coverage
+.coverage
+htmlcov/
+
+# System files
+.DS_Store
+
+# ML Model files (as fallback patterns)
+**/ESP_DNN/**/*.model
+**/ESP_DNN/**/*.weights
+**/ESP_DNN/**/*.data
+**/*.pkl
+**/*.h5
+**/*.ckpt
+
+# Large data files
+**/*.npy
+**/*.npz
+**/*.hdf5
+**/*.csv
+**/*.gz
+**/*.zip
+**/*.tar
+**/*.7z
+
+# APBS specific exclusions
+**/apbs/docs/**
+**/apbs/examples/**
+**/apbs/tests/**
+**/apbs/**/*.dx
+**/apbs/**/*.cube
+
+# CIF dictionary
+**/pdbdict/cif/**
+
+# Temp and log files
+**/tmp/
+**/temp/
+**/*.log
+**/*.swp

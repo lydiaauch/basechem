@@ -71,6 +71,7 @@ def check_for_new_assay_data():
                 check_for_new_assay_data_by_project,
                 project=project,
                 task_name=task_name,
+                group="Assay Emailer"
             )
 
 

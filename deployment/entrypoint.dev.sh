@@ -17,6 +17,7 @@ fi
 # Add an alias for the command used to run the the django shell w/ the VS code debugger
 echo 'alias django_debug_shell="python /tmp/debugpy --listen 0.0.0.0:5679 manage.py shell"' >> ~/.bashrc
 
+python manage.py createcachetable
 python manage.py makemigrations
 python manage.py migrate
 python manage.py startup

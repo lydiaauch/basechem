@@ -112,6 +112,14 @@ DATABASES = {
     }
 }
 
+# Unclear if this is doing anything but it exists in the db
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.db.DatabaseCache",
+        "LOCATION": "basechem_cache",
+    }
+}
+
 # Absolute filesystem path to the directory that will hold user-uploaded files.
 MEDIA_ROOT = os.path.join(PROJECT_ROOT, "public", "media")
 MEDIA_URL = "/media/"
@@ -173,15 +181,16 @@ LOGGING = {
 }
 
 Q_CLUSTER = {
-    "name": "default",  # name of the queue from Q_CLUSTER_CONFIG_LIST that should be used by default
+    "name": "default",
     "orm": "default",
     "workers": 2,
     "save_limit": 5000,
     "ack_failures": True,
     "has_replica": True,
-    "timeout": 43200,  # timeout after 12 hours
-    "retry": 43201,  # Never retry (because retry > timeout and ack_failures is True)
+    "timeout": 14400,  # timeout after 4 hours
+    "retry": 14401,  # Never retry (because retry > timeout and ack_failures is True)
     "max_attempts": 1,
+    "cpu_affinity": 3,
     "ALT_CLUSTERS": {
         "slow": {
             "timeout": 604800,  # timeout after 7 days
@@ -189,14 +198,19 @@ Q_CLUSTER = {
             "workers": 1,
         },
         "fast": {
-            "timeout": 3600,  # timeout after 1 hour
-            "retry": 3601,
+            "timeout": 2400,  # timeout after 40 minutes
+            "retry": 2401,
             "workers": 2,
             "cpu_affinity": 3,
         },
+        "dock": {  # queue specifically for docker tasks to be able to spawn child processes
+            "timeout": 14400,  # timeout after 40 minutes
+            "retry": 14401,
+            "workers": 2,
+            "daemonize_workers": False,
+        },
     },
 }
-
 
 # Internationalization
 LANGUAGE_CODE = "en-us"

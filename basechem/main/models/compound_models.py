@@ -1396,27 +1396,26 @@ class CompoundOccurrence(models.Model):
         """
         _, ref_id = self.compound._pick_reference_file_and_id(reference)
         lsalign_path = self.compound.get_lsalign_path(reference)
-        lsalign_mol = [mol for mol in Chem.SDMolSupplier(lsalign_path, removeHs=False)][
+        lsalign_mol = [mol for mol in Chem.SDMolSupplier(lsalign_path, removeHs=True)][
             0
         ]
         receptor_pdb_path = reference.path_to_local_file(reference.receptor_file)
 
-        rdock_mols = [mol for mol in Chem.SDMolSupplier(rdock_filepath, removeHs=False)]
+        rdock_mols = [mol for mol in Chem.SDMolSupplier(rdock_filepath, removeHs=True)]
         for i, mol in enumerate(rdock_mols, start=1):
             conf_id = mol.GetProp("s_conf_id")
             pose_id = f"c{self.compound.pk}-co{self.pk}-{conf_id}-{i}-{ref_id}"
             mol.SetProp("s_pose_id", pose_id)
             try:
+                # Sometimes this freezes (only on basechem) if there are Hs in the mol
                 rmsd_to_lsa = Chem.rdMolAlign.CalcRMS(mol, lsalign_mol)
             except:
                 # If something is off about the conformer from ls_align, manually set rmsd
                 rmsd_to_lsa = "100"
             mol.SetProp("r_bc_rdock_rmsd_to_lsalign", "%.3f" % float(rmsd_to_lsa))
 
-        score_prop = "toklat_score" if toklat else "SCORE"
-        sorted_by_toklat = sorted(
-            rdock_mols, key=lambda x: float(x.GetProp("toklat_score")), reverse=False
-        )[:3]
+        rdock_mols = [Chem.AddHs(mol, addCoords=True) for mol in rdock_mols]
+
         sorted_by_rdock = sorted(
             rdock_mols, key=lambda x: float(x.GetProp("SCORE")), reverse=False
         )[:3]
@@ -1425,16 +1424,31 @@ class CompoundOccurrence(models.Model):
             key=lambda x: float(x.GetProp("r_bc_rdock_rmsd_to_lsalign")),
             reverse=False,
         )[:2]
-        poses = sorted_by_toklat + sorted_by_rdock + sorted_by_rmsd
+        if toklat:
+            sorted_by_toklat = sorted(
+                rdock_mols,
+                key=lambda x: float(x.GetProp("toklat_score")),
+                reverse=False,
+            )[:3]
+            poses = sorted_by_toklat + sorted_by_rdock + sorted_by_rmsd
+        else:
+            poses = sorted_by_rdock + sorted_by_rmsd
 
         pose_dict = OrderedDict()
         for mol in poses:
             pose_id = mol.GetProp("s_pose_id")
             alerts, energy = mol_to_torsion_alerts(mol)
-            toklat_annotations = mol_to_toklat_annotations(mol, receptor_pdb_path)
+
+            # Set toklat scores if applicable
+            toklat_annotations = ""
+            toklat_score = ""
+            if toklat:
+                toklat_annotations = mol_to_toklat_annotations(mol, receptor_pdb_path)
+                toklat_score = "%.3f" % float(mol.GetProp("toklat_score"))
+
             pose_dict[pose_id] = {
                 "moltext": Chem.MolToMolBlock(mol),
-                "toklatScore": "%.3f" % float(mol.GetProp("toklat_score")),
+                "toklatScore": toklat_score,
                 "rdockScore": "%.3f" % float(mol.GetProp("SCORE")),
                 "RMSDtoLSAligned": "%.3f"
                 % float(mol.GetProp("r_bc_rdock_rmsd_to_lsalign")),

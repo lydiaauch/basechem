@@ -4,6 +4,7 @@ import os
 import pickle
 import shutil
 import subprocess
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from shutil import copy, copyfile
 from time import sleep
 
@@ -949,6 +950,80 @@ def convert_sdf_to_mol2(sdf_filepath):
         return mol2_filepath
 
 
+def align_conf(conf_path, i, lsalign_dir, template_mol2):
+    """
+    Helper to align a single conformer using ls-align
+    :param conf_path: the path to an sdf file with a single conformer to align
+    :param i: index of the conformer
+    :param lsalign_dir: directory to write ls-align files to
+    :param template_mol2: path to the template mol2 file
+    """
+    conf_mol2 = convert_sdf_to_mol2(conf_path)
+    aligned_pdb = os.path.join(lsalign_dir, f"aligned_conf_{i}.pdb")
+
+    cmd = [
+        "/opt/LS-align/src/LSalign",
+        conf_mol2,
+        template_mol2,
+        "-rf",
+        "1",  # flexible align
+        "-md",
+        "1",  # generate rotamers of query ligand
+        "-acc",
+        "1",  # take longer to search for more accurate alignment
+        "-o",
+        aligned_pdb,
+    ]
+
+    process = subprocess.run(args=cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+    try:
+        if not process.stderr:
+            # LS-Align outputs a bytes table which needs to be parsed to get the PC-Score
+            result_values = process.stdout.split(b"\n")[3]
+            pc_score = [x for x in result_values.split(b" ") if x][5].decode("utf-8")
+
+            # Remove second mol (template structure) from pdb, RDKit struggles to parse with GetMolFrags
+            with open(aligned_pdb, "r") as input:
+                with open("/tmp/tmp.pdb", "w") as output:
+                    lines = input.readlines()
+                    for line in lines:
+                        if "TER" in line:
+                            break
+                        else:
+                            output.write(line)
+            shutil.move("/tmp/tmp.pdb", aligned_pdb)
+
+            pdb = Chem.MolFromPDBFile(aligned_pdb, sanitize=False, removeHs=False)
+            # If there is anything else in the file, only keep the first mol
+            mol = Chem.GetMolFrags(pdb, asMols=True)[0]
+            mol.SetProp("LSAlign_PCScore", pc_score)
+            conf = Chem.SDMolSupplier(conf_path)[0]
+            # Reassign all props since they get removed by LS-Align
+            mol.SetProp("_Name", conf.GetProp("_Name"))
+            for prop in conf.GetPropNames():
+                mol.SetProp(prop, conf.GetProp(prop))
+            # ls-align removes bond order so need to reset the aromaticity, etc from the original query conformer
+            mol = AllChem.AssignBondOrdersFromTemplate(conf, mol)
+
+            # Overwrite the file with the new mol, since passing the object loses all metadata
+            writer = Chem.SDWriter(conf_path)
+            writer.write(mol)
+            writer.close()
+
+            return conf_path
+
+        else:
+            mail_admins(
+                ADMIN_FAILURE,
+                f"LS-Align failed for {conf_mol2} and {template_mol2}: \n{process.stderr}",
+            )
+            return
+    except Exception as e:
+        # Sometimes there is a weird error where a pdb file doesn't exist
+        return
+
+
 def run_lsalign(query_sdf, template_sdf, final_sdf_path):
     """
     Flexibly align the structures in the query sdf to the template compound and return the best aligned structure
@@ -965,73 +1040,32 @@ def run_lsalign(query_sdf, template_sdf, final_sdf_path):
     os.makedirs(lsalign_dir, exist_ok=True)
 
     query_confs = [conf for conf in Chem.SDMolSupplier(query_sdf)]
-    aligned_confs = []
-
+    query_conf_paths = []
     for i, conf in enumerate(query_confs):
         # Write each conformer to it's own file
         conf_sdf = os.path.join(lsalign_dir, f"conf_{i}.sdf")
         writer = Chem.SDWriter(conf_sdf)
         writer.write(conf)
         writer.close()
-        conf_mol2 = convert_sdf_to_mol2(conf_sdf)
-        aligned_pdb = os.path.join(lsalign_dir, f"aligned_conf_{i}.pdb")
+        query_conf_paths.append(conf_sdf)
 
-        cmd = [
-            "/opt/LS-align/src/LSalign",
-            conf_mol2,
-            template_mol2,
-            "-rf",
-            "1",  # flexible align
-            "-md",
-            "1",  # generate rotamers of query ligand
-            "-acc",
-            "1",  # take longer to search for more accurate alignment
-            "-o",
-            aligned_pdb,
+    aligned_conf_paths = []
+
+    # Run each conformer in parallel *theoretically...
+    with ProcessPoolExecutor() as executor:
+        futures = [
+            executor.submit(align_conf, conf, i, lsalign_dir, template_mol2)
+            for i, conf in enumerate(query_conf_paths[:4])
         ]
+        for future in as_completed(futures):
+            aligned_path = future.result()
 
-        process = subprocess.run(
-            args=cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE
-        )
+            if aligned_path:
+                aligned_conf_paths.append(aligned_path)
 
-        try:
-            if not process.stderr:
-                # LS-Align outputs a bytes table which needs to be parsed to get the PC-Score
-                result_values = process.stdout.split(b"\n")[3]
-                pc_score = [x for x in result_values.split(b" ") if x][5].decode(
-                    "utf-8"
-                )
-
-                # Remove second mol (template structure) from pdb, RDKit struggles to parse with GetMolFrags
-                with open(aligned_pdb, "r") as input:
-                    with open("/tmp/tmp.pdb", "w") as output:
-                        lines = input.readlines()
-                        for line in lines:
-                            if "TER" in line:
-                                break
-                            else:
-                                output.write(line)
-                shutil.move("/tmp/tmp.pdb", aligned_pdb)
-
-                pdb = Chem.MolFromPDBFile(aligned_pdb, sanitize=False, removeHs=False)
-                # If there is anything else in the file, only keep the first mol
-                mol = Chem.GetMolFrags(pdb, asMols=True)[0]
-                mol.SetProp("LSAlign_PCScore", pc_score)
-                # Reassign all props since they get removed by LS-Align
-                mol.SetProp("_Name", conf.GetProp("_Name"))
-                for prop in conf.GetPropNames():
-                    mol.SetProp(prop, conf.GetProp(prop))
-                # ls-align removes bond order so need to reset the aromaticity, etc from the original query conformer
-                mol = AllChem.AssignBondOrdersFromTemplate(conf, mol)
-                aligned_confs.append(mol)
-            else:
-                mail_admins(
-                    ADMIN_FAILURE,
-                    f"LS-Align failed for {conf_mol2} and {template_mol2}: \n{process.stderr}",
-                )
-        except:
-            # Sometimes there is a weird error where a pdb file doesn't exist
-            continue
+    aligned_confs = []
+    for path in aligned_conf_paths:
+        aligned_confs.append(Chem.SDMolSupplier(path)[0])
 
     sorted_confs = sorted(
         aligned_confs, key=lambda x: float(x.GetProp("LSAlign_PCScore")), reverse=True

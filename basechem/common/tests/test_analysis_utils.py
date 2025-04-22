@@ -16,6 +16,7 @@ from basechem.common.analysis_utils import (
     mol_to_toklat_annotations,
     mol_to_torsion_alerts,
     run_esp_predict,
+    run_lsalign,
 )
 from basechem.common.constants import TORSION_ALERTS_ENERGY_PROP, TORSION_ALERTS_PROP
 from basechem.common.tests.base import BasechemTestCase
@@ -405,3 +406,22 @@ class AnalysisUtilsTestCase(BasechemTestCase):
             self.assertEqual(
                 Chem.MolToSmiles(mol_sdf[i]), Chem.MolToSmiles(mol_mol2[i])
             )
+
+    def test_run_lsalign(self):
+        """
+        Check run_lsalign generates a file with structures
+        """
+        query_sdf = self.compound_a.get_confgen_path()
+        ref_file = self.series2.default_file(path=True)
+        final_path = "/tmp/testing_lsalign.sdf"
+
+        self.assertFalse(os.path.exists(final_path))
+        run_lsalign(query_sdf, ref_file, final_path)
+        self.assertTrue(os.path.exists(final_path))
+        aligned_mol = [mol for mol in Chem.SDMolSupplier(final_path)]
+        self.assertEqual(len(aligned_mol), 1)
+        self.assertIn("LSAlign_PCScore", aligned_mol[0].GetPropNames())
+        self.assertIn("s_conf_id", aligned_mol[0].GetPropNames())
+        self.assertIn("r_mmff_energy", aligned_mol[0].GetPropNames())
+
+        os.remove(final_path)
