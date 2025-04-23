@@ -41,6 +41,25 @@ class TemplatetagTestCase(TestCase):
             Prefetch("compoundoccurrence_set", queryset=co_w_owner)
         )
 
+    def variable_region_as_svg(self):
+        """
+        Test that the `variable_region_as_svg` tag returns a variable region as an svg
+        """
+        collection = self.collection1
+        compound_pk = str(collection.compounds()[0].pk)
+        collection.metadata["mmp_analysis"] = {
+            f"{compound_pk}": {"variable_smiles": "*C"}
+        }
+        collection.save()
+
+        out = Template(
+            "{% load tags %}" '{{ collection|variable_region_as_svg:"100,25" }}'
+        ).render(Context({"collection": collection}))
+
+        self.assertNotEqual(out, collection._inline_variable_region_svg(compound_pk, 50, 50))
+        self.assertEqual(out, collection._inline_variable_region_svg(compound_pk, 100, 25))
+        self.assertEqual("No variable region", collection._inline_variable_region_svg("fake_pk", 100, 25) )
+        
     def test_as_svg(self):
         """
         Test that the `as_svg` tag returns a compound as an svg
