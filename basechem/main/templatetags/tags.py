@@ -17,8 +17,14 @@ def variable_region_as_svg(collection, dimensions):
     :returns: an svg with the 2d structure of the compound
     """
     [x, y] = dimensions.split(",")
-    keys = list(collection.metadata['mmp_analysis'].keys())
-    return collection._inline_variable_region_svg(keys[0], int(x), int(y), transparent=False)
+    if collection.metadata: 
+        keys = list(collection.metadata.get("mmp_analysis", {}).keys())
+        compound_pk = keys[0] if keys else ""
+        return collection._inline_variable_region_svg(
+            compound_pk, int(x), int(y), transparent=False
+        )
+    else: 
+        return "No variable region" 
 
 
 @register.filter(name="as_svg")
