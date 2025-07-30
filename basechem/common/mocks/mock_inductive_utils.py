@@ -7,6 +7,8 @@ from basechem.common.constants import (
     IB_LOGD,
     IB_PERM,
     IB_RLM,
+    IB_APKA,
+    IB_BPKA
 )
 
 
@@ -118,6 +120,34 @@ def mock_get_ib_predictions(input_file, models, images=True):
                 if images:
                     compound_data["interp_image"] = interp_image
                     compound_data["probs_image"] = probs_image
+                return_data[model].append(compound_data)
+
+            if model == IB_APKA:
+                compound_data = {
+                    "name": mol.GetProp("_Name"),
+                    "prediction": "12",
+                    "measured": "",
+                    "out_of_domain": "False",
+                    "latest_data_date": "",
+                    "model_version": "1.2.0",
+                    "interp_image": "",
+                    "probs_image": "",
+                    "probs_list": [0.004, 0.016, 0.99],
+                }
+                return_data[model].append(compound_data)
+
+            if model == IB_BPKA:
+                compound_data = {
+                    "name": mol.GetProp("_Name"),
+                    "prediction": "2",
+                    "measured": "",
+                    "out_of_domain": "False",
+                    "latest_data_date": "",
+                    "model_version": "1.2.0",
+                    "interp_image": "",
+                    "probs_image": "",
+                    "probs_list": [0.99, 0.011, 0.009],
+                }
                 return_data[model].append(compound_data)
 
     return return_data

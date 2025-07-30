@@ -12,6 +12,7 @@
   {% call_object_method co "get_mmp_task_name" as task_name %}
   <span class="task-status" id="co-{{ co.id }}" data-task-name="{{ task_name }}">Job running</span>
   <div style="float:right;" >
+    Variable region selected: {{ collection|variable_region_as_svg:"200,100" }}
     {{ co.compound|as_svg:"200,100"}}
   </div>
   <nav>

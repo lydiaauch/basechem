@@ -1,10 +1,11 @@
 import datetime
+from functools import reduce
 
 import pandas as pd
 from django.conf import settings
 from django_q.tasks import fetch_group
 
-from basechem.common.constants import IB_HLM, IB_RLM
+from basechem.common.constants import *
 from basechem.common.inductive_utils import get_ib_predictions
 from basechem.main.constants import (
     ALL_PROPS,
@@ -31,6 +32,10 @@ def get_dtx_prop_name(prop):
         return "AlogD"
     elif prop == "dn_id":
         return "Compound ID"
+    elif prop == "latest_logd_data_date":
+        return "TrainingDataCutoff"
+    elif prop == "logd_version":
+        return "ModelVersion"
     else:
         return prop
 
@@ -43,27 +48,52 @@ def generate_dtx_lm_stability_csv(collection, lm_filepath):
     :param lm_filepath: path to the csv file to populate
     """
     sdf_filepath, _ = collection.get_sdf_file()
-    ib_output = get_ib_predictions(sdf_filepath, [IB_RLM, IB_HLM], False)
-    rlm_df = pd.DataFrame.from_dict(ib_output[IB_RLM])
-    hlm_df = pd.DataFrame.from_dict(ib_output[IB_HLM])
+    ib_output = get_ib_predictions(sdf_filepath, ALL_IB_MODELS, False)
 
-    # model_version and latest_data_date will be the same for all entries so can just take the first
-    model_version = list(set(hlm_df["model_version"]))[0]
-    lm_data_date = list(set(hlm_df["latest_data_date"]))[0]
+    df_list = []
+    for model in ALL_IB_MODELS:
+        model_df = pd.DataFrame.from_dict(ib_output[model])
+        model_df["prob"] = model_df["probs_list"].apply(
+            lambda x: max([float(i) for i in x], default="")
+        )
+        model_df = model_df.add_suffix(f"_{model}")
+        model_df.rename(columns={f"name_{model}": "name"}, inplace=True)
+        df_list.append(model_df)
 
-    joint_df = rlm_df.merge(hlm_df, on="name", suffixes=["_rlm", "_hlm"])
+    joint_df = reduce(lambda x, y: pd.merge(x, y, on="name", how="outer"), df_list)
+
     # Add constant columns
     joint_df["assay"] = "Inductive Bio GCNN"
     joint_df["prediction_date"] = datetime.datetime.today().strftime("%m/%d/%Y")
+    # model_version and latest_data_date will be the same for all entries so can just take the first
+    model_version = list(set(df_list[1][f"model_version_{IB_HLM}"]))[0]
+    lm_data_date = list(set(df_list[1][f"latest_data_date_{IB_HLM}"]))[0]
     joint_df["model_version"] = f"{model_version}: {lm_data_date}"
     # blank column so the CSV matches the Dotmatics processing script
     joint_df["skip"] = ""
 
     # Add calculated columns
-    joint_df["out_of_domain_flag"] = joint_df["out_of_domain_rlm"].apply(
+    joint_df["out_of_domain_flag"] = joint_df[f"out_of_domain_{IB_RLM}"].apply(
         lambda x: "out-of-domain" if x == "True" else ""
     )
-    joint_df["pStable"] = joint_df["probs_list_hlm"].apply(lambda x: f"{x[0]:.3f}")
+    joint_df["pStable"] = joint_df[f"probs_list_{IB_HLM}"].apply(
+        lambda x: f"{x[0]:.3f}"
+    )
+
+    rename = {
+        f"prediction_{IB_APKA}": "C_aPKA",
+        f"prediction_{IB_BPKA}": "C_bPKA",
+        f"prediction_{IB_EFFLUX}": "C_EFFLUX",
+        f"prob_{IB_EFFLUX}": "C_EFFLUX_PROB",
+        f"prediction_{IB_PERM}": "C_PERMEABILITY",
+        f"prob_{IB_PERM}": "C_PERMEABILITY_PROB",
+        f"prediction_{IB_KSOL}": "C_KSOLUBILITY",
+        f"prob_{IB_KSOL}": "C_KSOLUBILITY_PROB",
+        f"prediction_{IB_RLM}": "prediction_rlm",
+        f"prediction_{IB_HLM}": "prediction_hlm",
+    }
+    joint_df.rename(columns=rename, inplace=True)
+
     joint_df.to_csv(
         lm_filepath,
         columns=[
@@ -83,6 +113,14 @@ def generate_dtx_lm_stability_csv(collection, lm_filepath):
             "skip",
             "prediction_rlm",
             "skip",
+            "C_aPKA",
+            "C_bPKA",
+            "C_EFFLUX",
+            "C_EFFLUX_PROB",
+            "C_PERMEABILITY",
+            "C_PERMEABILITY_PROB",
+            "C_KSOLUBILITY",
+            "C_KSOLUBILITY_PROB",
         ],
         index=False,
     )
@@ -112,14 +150,22 @@ def generate_dtx_propcalc_csv(collection, props_filepath):
     prop_dict = collect_propcalc_results(tasks)
 
     df = pd.DataFrame.from_dict(prop_dict, orient="index")
+    # Drop columns that aren't in the properties list
+    cleaned_props = [prop.lower().replace(" ", "_") for prop in props]
+
     if settings.INDUCTIVE_BIO_ENABLED:
         df[ALOGD.lower()] = df["logd_prediction"]
-
-    # Drop columns that aren't in the properties
-    cleaned_props = [prop.lower().replace(" ", "_") for prop in props]
+        cleaned_props.extend(["logd_version", "latest_logd_data_date"])
+        props.extend(["logd_version", "latest_logd_data_date"])
+        # Convert date to expected DTX format dd/mm/yyyy
+        df["latest_logd_data_date"] = pd.to_datetime(df["latest_logd_data_date"])
+        df["latest_logd_data_date"] = df["latest_logd_data_date"].dt.strftime(
+            "%m/%d/%Y"
+        )
 
     drop_cols = [col for col in df.columns if col not in cleaned_props]
     df = df.drop(columns=drop_cols)
+
     # Rename the columns to match Dotmatics names and put them in the correct order
     new_col_names = {}
     new_col_order = []

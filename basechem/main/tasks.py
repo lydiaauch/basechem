@@ -168,17 +168,18 @@ def update_ib_model_data(timedelt=8, models=ALL_IB_MODELS):
     last_week = datetime.datetime.today() - datetime.timedelta(days=timedelt)
     last_week_fmt = last_week.strftime("%Y%m%d")
 
+    responses = {}
     for model in models:
         try:
-            data_mols = IB_PUT_UTILS().pick_model(model, date=last_week_fmt)
+            data_mols = IB_PUT_UTILS().pick_model(model, date=last_week)
         except KeyError as e:
-            data_mols = ""
-            mail_admins(
-                ADMIN_NOTIFICATION,
-                f"There is no data retrieval function in dtx_utils.py for {model}.",
-            )
+            upload_response = f"No data retrieval function for {model}"
+            responses[model] = upload_response
+            continue
 
-        if data_mols:
+        if not data_mols:
+            upload_response = f"No data found for this model since {last_week_fmt}"
+        else:
             tmp_data_file = f"/tmp/{last_week_fmt}_{model}_dtx.sdf"
             writer = Chem.SDWriter(tmp_data_file)
             for mol in data_mols:
@@ -186,11 +187,16 @@ def update_ib_model_data(timedelt=8, models=ALL_IB_MODELS):
             writer.close()
 
             # Extra check to not send InductiveBio DTX TEST data
-            upload_response = ""
+            upload_response = "TEST"
             if "test" not in settings.DTX_HOST and "prod" in settings.ENVIRONMENT:
                 upload_response = put_data_to_ib(tmp_data_file, model)
+                upload_response = (
+                    upload_response
+                    + f": {len(data_mols)} compounds uploaded to {model}."
+                )
+        responses[model] = upload_response
 
-            return upload_response
+    return responses
 
 
 def update_mmpdb(dn_id=None):  # pragma: no cover

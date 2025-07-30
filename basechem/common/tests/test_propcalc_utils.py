@@ -20,16 +20,21 @@ class PropCalcUtilsTestCase(BasechemTestCase):
         with self.subTest("dn_id"):
             prop = get_dtx_prop_name("dn_id")
             self.assertEqual(prop, "Compound ID")
+        with self.subTest("LogD Model Version"):
+            prop = get_dtx_prop_name("logd_version")
+            self.assertEqual(prop, "ModelVersion")
+        with self.subTest("LogD Model Training Data Cutoff"):
+            prop = get_dtx_prop_name("latest_logd_data_date")
+            self.assertEqual(prop, "TrainingDataCutoff")
         with self.subTest("normal"):
             prop = get_dtx_prop_name(CLOGP)
             self.assertEqual(prop, CLOGP)
 
-    @tag("local", "inductive", "dtx", "external")
+    @tag("inductive", "dtx", "external")
     def test_generate_dtx_propcalc_csv(self):
         """
         Test that `generate_dtx_propcalc_csv` creates a new csv file with the
-        correct information. Since this runs propcalc_analysis with inductive props, it must
-        be run locally
+        correct information.
         """
         filename = "test_generate_dtx_propcalc_file"
         props_filepath = collection_files_path(self.collection, filename, local=True)
@@ -50,18 +55,23 @@ class PropCalcUtilsTestCase(BasechemTestCase):
 
         self.assertEqual(
             lines[0],
-            "Compound ID,Acceptors,AromaticRings,Charge,Donors,FractionCSP3,HeavyAtoms,MW,Rings,RotBonds,SolubilityIndex,TPSA,cLogP,AlogD\n",
+            "Compound ID,Acceptors,AromaticRings,Charge,Donors,FractionCSP3,HeavyAtoms,MW,Rings,RotBonds,SolubilityIndex,TPSA,cLogP,AlogD,ModelVersion,TrainingDataCutoff\n",
         )
-        self.assertEqual(lines[1], "DN001,0,0,0,0,1.0,6,84,1,0,2.3,0,2.3,2.3\n")
-        self.assertEqual(lines[2], "DN002,0,1,0,0,0.0,6,78,1,0,2.7,0,1.7,2.3\n")
-        self.assertEqual(lines[3], "DN003,0,0,0,0,0.2,5,66,1,0,1.5,0,1.5,2.3\n")
+        self.assertEqual(
+            lines[1], "DN001,0,0,0,0,1.0,6,84,1,0,2.3,0,2.3,2.3,2.0.0,11/25/2022\n"
+        )
+        self.assertEqual(
+            lines[2], "DN002,0,1,0,0,0.0,6,78,1,0,2.7,0,1.7,2.3,2.0.0,11/25/2022\n"
+        )
+        self.assertEqual(
+            lines[3], "DN003,0,0,0,0,0.2,5,66,1,0,1.5,0,1.5,2.3,2.0.0,11/25/2022\n"
+        )
 
-    @tag("local", "inductive", "dtx")
+    @tag("inductive", "dtx")
     def test_generate_dtx_lm_stability_csv(self):
         """
         Test that `generate_dtx_lm_stability_csv` creates a new csv file with the
-        lm data. Since this makes calls to the InductiveBio API it must
-        be run locally
+        lm data.
         """
         date = datetime.datetime.today().strftime("%m/%d/%Y")
         filename = "test_generate_dtx_lm_stability.csv"
@@ -78,17 +88,17 @@ class PropCalcUtilsTestCase(BasechemTestCase):
 
         self.assertEqual(
             lines[0],
-            "name,assay,skip,skip,skip,out_of_domain_flag,skip,pStable,skip,skip,prediction_date,model_version,prediction_hlm,skip,prediction_rlm,skip\n",
+            "name,assay,skip,skip,skip,out_of_domain_flag,skip,pStable,skip,skip,prediction_date,model_version,prediction_hlm,skip,prediction_rlm,skip,C_aPKA,C_bPKA,C_EFFLUX,C_EFFLUX_PROB,C_PERMEABILITY,C_PERMEABILITY_PROB,C_KSOLUBILITY,C_KSOLUBILITY_PROB\n",
         )
         self.assertEqual(
             lines[1],
-            f"DN001,Inductive Bio GCNN,,,,out-of-domain,,0.200,,,{date},2.0.0: 2022-11-25,20.53,,54.04,\n",
+            f"DN001,Inductive Bio GCNN,,,,out-of-domain,,0.200,,,{date},2.0.0: 2022-11-25,20.53,,54.04,,12,2,0.5,0.99,0.12,0.68,6.5,0.586\n",
         )
         self.assertEqual(
             lines[2],
-            f"DN002,Inductive Bio GCNN,,,,out-of-domain,,0.200,,,{date},2.0.0: 2022-11-25,20.53,,54.04,\n",
+            f"DN002,Inductive Bio GCNN,,,,out-of-domain,,0.200,,,{date},2.0.0: 2022-11-25,20.53,,54.04,,12,2,0.5,0.99,0.12,0.68,6.5,0.586\n",
         )
         self.assertEqual(
             lines[3],
-            f"DN003,Inductive Bio GCNN,,,,out-of-domain,,0.200,,,{date},2.0.0: 2022-11-25,20.53,,54.04,\n",
+            f"DN003,Inductive Bio GCNN,,,,out-of-domain,,0.200,,,{date},2.0.0: 2022-11-25,20.53,,54.04,,12,2,0.5,0.99,0.12,0.68,6.5,0.586\n",
         )

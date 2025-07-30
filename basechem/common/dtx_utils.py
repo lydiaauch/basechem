@@ -243,24 +243,24 @@ try:
             :param model: a string, the name of the model
             :returns: a function, the function to get data for the model
             """
-            func_name = f"get_{model}_data"
+            func_name = f"_get_{model}_data"
             if hasattr(self, func_name) and callable(func := getattr(self, func_name)):
                 return func(**kwargs)
 
-        def get_generic_logd_data(self, date):
+        def _get_generic_logd_data(self, date):
             """
             Wrapper to get the logD avg of DNs that have results since the given
             date from the LogD Agg table in Dotmatics
-            :param date: date string to query for more recent data in the form YYYYMMDD
+            :param date: datetime object to use for querying more recent data
             :returns: a list of mol objects with relevant properties
             """
-            # Get new data since the given date
+            # Get new dn_ids with new data since the given date
+            date = date.strftime("%Y%m%d")
             query_params = [("EXP_CREATED_DATE_JMAX", "591", "greaterthan", date)]
             query_data = construct_query_data(query_params)
-
-            mol_results = []
             dn_ids = query_and_parse_dtx("10000", query_data)
 
+            mol_results = []
             if dn_ids:
                 logd_data_dict = get_parsed_denali_logd_agg(dn_ids)
                 structure_dict = get_parsed_structure(dn_ids)

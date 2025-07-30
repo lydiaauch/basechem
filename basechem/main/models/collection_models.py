@@ -11,6 +11,7 @@ from django.core.mail import mail_admins
 from django.db import models
 from django.db.models import Case, When
 from django.urls import reverse
+from django.utils.safestring import mark_safe
 from django_q.tasks import async_task, fetch_group
 from rdkit import Chem
 from rdkit.rdBase import LogToPythonStderr
@@ -46,6 +47,7 @@ from basechem.main.constants import (
 )
 from basechem.main.models.compound_models import Compound, CompoundOccurrence, Series
 from basechem.main.models.project_models import Project
+from basechem.mni_common.rdkit_utils import moltext_to_svg
 from basechem.mni_common.storage import select_media_storage
 from basechem.users.models import BasechemUser
 
@@ -581,6 +583,30 @@ class Collection(models.Model):
         ic50_data = get_agg_ic50_data(dn_ids)
         for c in comps:
             c.update_mmp_dtx_avg_assay_data(ic50_data, dns_to_skip)
+
+    def _inline_variable_region_svg(
+        self, comp_pk, size_x=450, size_y=150, transparent=False
+    ):
+        """
+        Draw the variable region as an SVG in the given canvas size
+        :param comp_pk: the PK of the Compound object whose variable region is being drawn
+        :param size_x: the width of the svg in pixels
+        :param size_y: the height of the svg in pixels
+        :param transparent: a boolean, should the background be transparent? If False, the background is white
+        :return: a string with SVG data
+        """
+        try:
+            varsmiles = Chem.MolFromSmiles(
+                self.metadata["mmp_analysis"][comp_pk]["variable_smiles"]
+            )
+        except: 
+            return "No variable region"
+        moltext = Chem.MolToMolBlock(varsmiles)
+        svg = moltext_to_svg(moltext, size_x, size_y, transparent)
+        svg_prefix = re.compile(r"<\?xml .*\?>\s*<svg")
+        result = re.sub(svg_prefix, "<svg", svg)
+        result = mark_safe(result)
+        return result
 
     ######################
     ## PROPCALC METHODS ##

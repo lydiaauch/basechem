@@ -8,6 +8,24 @@ from basechem.main.utils import strip_series_from_conf_id
 
 register = template.Library()
 
+@register.filter(name="variable_region_as_svg")
+def variable_region_as_svg(collection, dimensions):
+    """
+    Generate an SVG image with a white background for the given compound
+    :param compound: a Compound object
+    :param dimensions: a string of the form "x_dim, y_dim"
+    :returns: an svg with the 2d structure of the compound
+    """
+    [x, y] = dimensions.split(",")
+    if collection.metadata: 
+        keys = list(collection.metadata.get("mmp_analysis", {}).keys())
+        compound_pk = keys[0] if keys else ""
+        return collection._inline_variable_region_svg(
+            compound_pk, int(x), int(y), transparent=False
+        )
+    else: 
+        return "No variable region" 
+
 
 @register.filter(name="as_svg")
 def as_svg(compound, dimensions):

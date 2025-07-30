@@ -37,8 +37,6 @@ from basechem.common.analysis_utils import (
 from basechem.common.constants import (
     ADMIN_NOTIFICATION,
     ALL_IB_MODELS,
-    IB_APKA,
-    IB_BPKA,
 )
 from basechem.common.dtx_utils import get_agg_ic50_data, get_registered_structures
 from basechem.common.file_utils import get_tmp_file
